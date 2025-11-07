@@ -5,22 +5,22 @@ SHELL = /bin/bash
 MAKEFILE_DIR := $(shell dirname $(abspath $(lastword $(MAKEFILE_LIST))))
 
 lint-fix:
-	yarn run lint:fix
+	pnpm run lint:fix
 
 lint:
-	yarn run lint
+	pnpm run lint
 
 tests:
-	yarn run tests
+	pnpm run tests
 
 cleanup-dist:
 	test -d ${MAKEFILE_DIR}/dist && rm -r ${MAKEFILE_DIR}/dist
 
 build: cleanup-dist
-	yarn run build
+	pnpm run build
 
 build-dev: cleanup-dist
-	yarn run dev:build
+	pnpm run dev:build
 
 publish: build
-	yarn publish --access public
+	pnpm publish --access public
