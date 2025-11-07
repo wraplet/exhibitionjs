@@ -2,7 +2,7 @@ import { AbstractWraplet, Core, DefaultCore } from "wraplet";
 import { Storage, StorageValidators } from "wraplet/storage";
 
 import * as monaco from "monaco-editor";
-import { DocumentAltererWraplet } from "./types/DocumentAltererWraplet";
+import { DocumentAltererProviderWraplet } from "./types/DocumentAltererProviderWraplet";
 import { ElementStorage } from "wraplet/storage";
 import { defaultOptionsAttribute } from "./selectors";
 import {
@@ -29,9 +29,9 @@ type RequiredMonacoEditorOptions = Required<
   tagAttributes?: MonacoEditorOptions["tagAttributes"];
 };
 
-export class MonacoEditor
+export class ExhibitionMonacoEditor
   extends AbstractWraplet<HTMLElement>
-  implements DocumentAltererWraplet
+  implements DocumentAltererProviderWraplet
 {
   private monacoEditorModule: typeof monaco;
   private editor: monaco.editor.IStandaloneCodeEditor;
@@ -74,6 +74,11 @@ export class MonacoEditor
       validators,
       {
         elementOptionsMerger: (defaults, options) => {
+          options.monacoOptions = {
+            ...defaults.monacoOptions,
+            ...options.monacoOptions,
+          };
+
           return { ...defaults, ...options };
         },
       },
@@ -92,16 +97,19 @@ export class MonacoEditor
     this.validateOptions();
 
     const monacoOptions = this.options.get("monacoOptions");
-    this.monacoEditorModule.languages.typescript.typescriptDefaults.setEagerModelSync(
-      true,
-    );
+
+    // Generate a unique URI for each editor instance
+    const uniqueId = Math.random().toString(36).substring(2, 15);
     const model = this.monacoEditorModule.editor.createModel(
       this.options.get("monacoOptions").value || "",
       this.getLanguage(),
-      this.monacoEditorModule.Uri.parse(`file:///${this.getLanguage()}.ts`),
+      this.monacoEditorModule.Uri.parse(
+        `file:///${this.getLanguage()}-${uniqueId}.ts`,
+      ),
     );
 
     const monacoEditorModule = this.options.get("monacoEditorModule");
+
     this.editor = monacoEditorModule.editor.create(this.node, {
       ...monacoOptions,
       ...{ model: model },
@@ -112,17 +120,19 @@ export class MonacoEditor
     return this.options.get("priority");
   }
 
-  public getValue(): string {
+  /**
+   * Returns the current value of the editor.
+   */
+  private getValue(): string {
     return this.editor.getValue();
   }
 
-  public async alterDocument(document: Document): Promise<void> {
+  private async alterDocument(document: Document): Promise<void> {
     const language = this.getLanguage();
     const content =
       language === "typescript" ? await this.getTSValueAsJS() : this.getValue();
 
     const location = this.options.get("location");
-
     const type = getTypeFromLanguage(language);
 
     if (isSingleTagType(type)) {
@@ -261,11 +271,14 @@ export class MonacoEditor
     return trimmedLines.join("\n").trim();
   }
 
+  /**
+   * Create a single ExhibitionMonacoEditor instance wrapping a given element.
+   */
   public static create(
     element: HTMLElement,
     options: MonacoEditorOptions,
-  ): MonacoEditor {
+  ): ExhibitionMonacoEditor {
     const core = new DefaultCore(element, {});
-    return new MonacoEditor(core, options);
+    return new ExhibitionMonacoEditor(core, options);
   }
 }

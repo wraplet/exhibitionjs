@@ -3,7 +3,7 @@ export type { ExhibitionOptions } from "./Exhibition";
 
 export { defaultOptionsAttribute } from "./selectors";
 
-export { MonacoEditor } from "./MonacoEditor";
-export type { MonacoEditorOptions } from "./MonacoEditor";
+export { ExhibitionMonacoEditor } from "./ExhibitionMonacoEditor";
+export type { MonacoEditorOptions } from "./ExhibitionMonacoEditor";
 
-export type { DocumentAltererWraplet } from "./types/DocumentAltererWraplet";
+export type { DocumentAltererProviderWraplet } from "./types/DocumentAltererProviderWraplet";

@@ -1,6 +1,6 @@
 {
   "name": "exhibitionjs",
-  "version": "0.7.0",
+  "version": "0.8.0",
   "description": "Library for showcasing your js/ts code snippets.",
   "main": "dist/index.js",
   "type": "module",
@@ -17,10 +17,10 @@
     "url": "https://github.com/wraplet/exhibitionjs.git"
   },
   "scripts": {
-    "setup": "yarn install",
-    "build": "NODE_OPTIONS='--no-experimental-strip-types --import tsx' node ./node_modules/.bin/webpack --mode production --config webpack.config.ts",
-    "dev:build": "NODE_OPTIONS='--no-experimental-strip-types --import tsx' node ./node_modules/.bin/webpack --mode development --config webpack.config.ts",
-    "dev:watch": "NODE_OPTIONS='--no-experimental-strip-types --import tsx' node ./node_modules/.bin/webpack --mode development --watch --config webpack.config.ts",
+    "setup": "pnpm install",
+    "build": "tsx ./node_modules/.bin/webpack --mode production --config webpack.config.ts",
+    "dev:build": "tsx ./node_modules/.bin/webpack --mode development --config webpack.config.ts",
+    "dev:watch": "tsx ./node_modules/.bin/webpack --mode development --watch --config webpack.config.ts",
     "lint": "tsc --noemit && npx eslint './src/**/*.ts' './tests/**/*.ts'",
     "lint:fix": "npx eslint './src/**/*.ts' './tests/**/*.ts' --fix",
     "tests-setup": "npx playwright install chromium",

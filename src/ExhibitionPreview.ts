@@ -10,6 +10,12 @@ export class ExhibitionPreview extends AbstractWraplet<HTMLIFrameElement> {
   private alterers: AltererData[] = [];
   private currentBlobUrl: string | null = null;
 
+  /**
+   * Adds a DocumentAlterer to the preview.
+   * @param alterer
+   * @param priority
+   *   Priority of the alterer. Higher priority alterers are executed first.
+   */
   public addDocumentAlterer(
     alterer: DocumentAlterer,
     priority: number = 0,
@@ -22,7 +28,7 @@ export class ExhibitionPreview extends AbstractWraplet<HTMLIFrameElement> {
 
   public async update(): Promise<void> {
     const doc = document.implementation.createHTMLDocument();
-    this.alterers.sort((a, b) => a.priority - b.priority);
+    this.alterers.sort((a, b) => b.priority - a.priority);
     for (const alterer of this.alterers) {
       await alterer.callback(doc);
     }
@@ -38,11 +44,18 @@ export class ExhibitionPreview extends AbstractWraplet<HTMLIFrameElement> {
     this.node.src = this.currentBlobUrl;
 
     this.node.onload = () => {
-      this.updateHeight();
+      // Wait for the document to render before calculating the height.
+      // @todo This should be configurable.
+      setTimeout(() => {
+        this.updateHeight();
+      }, 100);
       this.node.onload = null;
     };
   }
 
+  /**
+   * Updates preview's height to match its content.
+   */
   public updateHeight(): void {
     const iframeWindow = this.getIFrameWindow();
     const iframeDocument = this.getIFrameDocument();
@@ -56,7 +69,6 @@ export class ExhibitionPreview extends AbstractWraplet<HTMLIFrameElement> {
       parseFloat(styles["marginTop"]) + parseFloat(styles["marginBottom"]);
 
     const height = Math.ceil(el.offsetHeight + margin);
-
     this.node.height = height + "px";
   }
 
