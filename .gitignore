@@ -8,3 +8,4 @@
 /coverage/
 /test-results/
 /local
+/.webpack-cache
