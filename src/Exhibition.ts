@@ -22,6 +22,11 @@ export type ExhibitionOptions = {
   updaterSelector?: string;
 };
 
+export type ExhibitionCreateOptions = {
+  init?: boolean;
+  updatePreview?: boolean;
+};
+
 export type ExhibitionMapOptions = {
   Class: Constructable<DocumentAltererProviderWraplet>;
   selectEditors?: boolean;
@@ -132,8 +137,8 @@ export class Exhibition extends AbstractWraplet<
    * @param attribute Attribute to use for Exhibition instances.
    * @param map Map of dependencies for each Exhibition instance.
    * @param options Options for Exhibition instances.
-   * @param init Initialize exhibitions after they're created.
-   * @param updatePreview Update preview of each exhibition after it's initialized.
+   * @param createOptions Options related to the creation process of the Exhibitions.
+   *
    * @returns Array of Exhibition instances.
    */
   public static async createMultiple(
@@ -141,10 +146,9 @@ export class Exhibition extends AbstractWraplet<
     attribute: string = exhibitionDefaultAttribute,
     map: typeof ExhibitionMap,
     options: ExhibitionOptions = {},
-    init: boolean = true,
-    updatePreview: boolean = true,
+    createOptions: ExhibitionCreateOptions = {},
   ): Promise<Exhibition[]> {
-    if (!init && updatePreview) {
+    if (!createOptions.init && createOptions.updatePreview) {
       throw new Error(
         "Cannot update preview without initializing exhibitions first",
       );
@@ -157,14 +161,8 @@ export class Exhibition extends AbstractWraplet<
       [options],
     );
 
-    if (init) {
-      await Promise.all(exhibitions.map((exhibition) => exhibition.init()));
-    }
-
-    if (updatePreview) {
-      await Promise.all(
-        exhibitions.map((exhibition) => exhibition.updatePreview()),
-      );
+    for (const exhibition of exhibitions) {
+      await this.applyCreateOptions(exhibition, createOptions);
     }
 
     return exhibitions;
@@ -176,14 +174,34 @@ export class Exhibition extends AbstractWraplet<
    * @param element Element to wrap.
    * @param map Map of dependencies for the Exhibition instance.
    * @param options Options for the Exhibition instance.
+   * @param createOptions Options related to the creation process of the Exhibitions.
    */
   public static async create(
     element: HTMLElement,
     map: typeof ExhibitionMap,
     options: ExhibitionOptions = {},
+    createOptions: ExhibitionCreateOptions = {},
   ): Promise<Exhibition> {
     const core = new DefaultCore(element, map);
-    return new Exhibition(core, options);
+    const exhibition = new Exhibition(core, options);
+    await this.applyCreateOptions(exhibition, createOptions);
+    return exhibition;
+  }
+
+  /**
+   * Create options.
+   */
+  private static async applyCreateOptions(
+    exhibition: Exhibition,
+    createOptions: ExhibitionCreateOptions = {},
+  ): Promise<void> {
+    if (createOptions.init) {
+      await exhibition.init();
+    }
+
+    if (createOptions.updatePreview) {
+      await exhibition.updatePreview();
+    }
   }
 
   /**
