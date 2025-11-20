@@ -8,7 +8,7 @@ import {
 import { ExhibitionPreview } from "./ExhibitionPreview";
 import {
   ExhibitionMonacoEditor,
-  MonacoEditorOptions,
+  ExhibitionMonacoEditorOptions,
 } from "./ExhibitionMonacoEditor";
 import { exhibitionDefaultAttribute } from "./selectors";
 import { DocumentAltererProviderWraplet } from "./types/DocumentAltererProviderWraplet";
@@ -16,13 +16,15 @@ import { ElementStorage, Storage } from "wraplet/storage";
 import { DocumentAlterer } from "./types/DocumentAlterer";
 
 export type ExhibitionOptions = {
-  updatePreviewOnInit?: boolean;
+  /**
+   * Selector for the element that triggers the update of the preview.
+   */
   updaterSelector?: string;
 };
 
 export type ExhibitionMapOptions = {
   Class: Constructable<DocumentAltererProviderWraplet>;
-  initEditors?: boolean;
+  selectEditors?: boolean;
 };
 
 const ExhibitionMap = {
@@ -53,7 +55,6 @@ export class Exhibition extends AbstractWraplet<
   ) {
     super(core);
     const defaultOptions: Required<ExhibitionOptions> = {
-      updatePreviewOnInit: true,
       updaterSelector: "[data-js-exhibition-updater]",
     };
     this.options = new ElementStorage<Required<ExhibitionOptions>>(
@@ -61,7 +62,6 @@ export class Exhibition extends AbstractWraplet<
       exhibitionDefaultAttribute,
       { ...defaultOptions, ...options },
       {
-        updatePreviewOnInit: (data: unknown) => typeof data === "boolean",
         updaterSelector: (data: unknown) => typeof data === "string",
       },
     );
@@ -81,10 +81,10 @@ export class Exhibition extends AbstractWraplet<
         this.updatePreview();
       });
     }
+  }
 
-    if (this.options.get("updatePreviewOnInit")) {
-      this.updatePreview();
-    }
+  public async init() {
+    await this.initalizeMonacoEditors();
   }
 
   /**
@@ -113,23 +113,61 @@ export class Exhibition extends AbstractWraplet<
     await this.children.preview.update();
   }
 
+  public async initalizeMonacoEditors() {
+    for (const editor of this.children.editors) {
+      if (editor instanceof ExhibitionMonacoEditor) {
+        if (editor.isEditorInitialized()) {
+          continue;
+        }
+
+        await editor.init();
+      }
+    }
+  }
+
   /**
    * Create multiple Exhibitions.
    *
    * @param node Node to create Exhibitions on.
    * @param attribute Attribute to use for Exhibition instances.
-   * @param map Map of dependencies for each Exhibition instance..
+   * @param map Map of dependencies for each Exhibition instance.
    * @param options Options for Exhibition instances.
-   *
+   * @param init Initialize exhibitions after they're created.
+   * @param updatePreview Update preview of each exhibition after it's initialized.
    * @returns Array of Exhibition instances.
    */
-  public static createMultiple(
+  public static async createMultiple(
     node: ParentNode,
     attribute: string = exhibitionDefaultAttribute,
     map: typeof ExhibitionMap,
     options: ExhibitionOptions = {},
-  ): Exhibition[] {
-    return this.createWraplets(node, map, attribute, [options]);
+    init: boolean = true,
+    updatePreview: boolean = true,
+  ): Promise<Exhibition[]> {
+    if (!init && updatePreview) {
+      throw new Error(
+        "Cannot update preview without initializing exhibitions first",
+      );
+    }
+
+    const exhibitions = this.createWraplets<HTMLElement, Exhibition>(
+      node,
+      map,
+      attribute,
+      [options],
+    );
+
+    if (init) {
+      await Promise.all(exhibitions.map((exhibition) => exhibition.init()));
+    }
+
+    if (updatePreview) {
+      await Promise.all(
+        exhibitions.map((exhibition) => exhibition.updatePreview()),
+      );
+    }
+
+    return exhibitions;
   }
 
   /**
@@ -139,11 +177,11 @@ export class Exhibition extends AbstractWraplet<
    * @param map Map of dependencies for the Exhibition instance.
    * @param options Options for the Exhibition instance.
    */
-  public static create(
+  public static async create(
     element: HTMLElement,
     map: typeof ExhibitionMap,
     options: ExhibitionOptions = {},
-  ): Exhibition {
+  ): Promise<Exhibition> {
     const core = new DefaultCore(element, map);
     return new Exhibition(core, options);
   }
@@ -151,13 +189,13 @@ export class Exhibition extends AbstractWraplet<
   /**
    * Returns a dependency map with editors being instances of ExhibitionMonacoEditor.
    *
-   * @param editorOptions
-   *   MonacoEditorOptions to pass to the editor.
+   * @param exhibitionMonacoEditorOptions
+   *   MonacoEditorOptions to pass to the ExhibitionMonacoEditor.
    * @param options
    *   Map options.
    */
   public static getMapWithMonacoEditor(
-    editorOptions: Partial<MonacoEditorOptions>,
+    exhibitionMonacoEditorOptions: ExhibitionMonacoEditorOptions,
     options: Omit<ExhibitionMapOptions, "Class"> = {},
   ): typeof ExhibitionMap {
     const opts: ExhibitionMapOptions = {
@@ -166,7 +204,7 @@ export class Exhibition extends AbstractWraplet<
     };
     const map = this.getMap(opts);
 
-    map["editors"]["args"] = [editorOptions];
+    map["editors"]["args"] = [exhibitionMonacoEditorOptions];
 
     return map;
   }
@@ -182,14 +220,14 @@ export class Exhibition extends AbstractWraplet<
     const map: typeof ExhibitionMap = ExhibitionMap;
     const allOptions: Required<ExhibitionMapOptions> = {
       ...{
-        initEditors: true,
+        selectEditors: true,
       },
       ...options,
     };
 
     map["editors"]["Class"] = allOptions.Class;
 
-    if (!allOptions.initEditors) {
+    if (!allOptions.selectEditors) {
       map["editors"]["selector"] = undefined;
     }
 

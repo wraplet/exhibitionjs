@@ -14,7 +14,7 @@ tests:
 	pnpm run tests
 
 cleanup-dist:
-	test -d ${MAKEFILE_DIR}/dist && rm -r ${MAKEFILE_DIR}/dist
+	rm -rf ${MAKEFILE_DIR}/dist
 
 build: cleanup-dist
 	pnpm run build
