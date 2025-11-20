@@ -148,11 +148,7 @@ export class Exhibition extends AbstractWraplet<
     options: ExhibitionOptions = {},
     createOptions: ExhibitionCreateOptions = {},
   ): Promise<Exhibition[]> {
-    if (!createOptions.init && createOptions.updatePreview) {
-      throw new Error(
-        "Cannot update preview without initializing exhibitions first",
-      );
-    }
+    this.validateCreateOptions(createOptions);
 
     const exhibitions = this.createWraplets<HTMLElement, Exhibition>(
       node,
@@ -182,10 +178,22 @@ export class Exhibition extends AbstractWraplet<
     options: ExhibitionOptions = {},
     createOptions: ExhibitionCreateOptions = {},
   ): Promise<Exhibition> {
+    this.validateCreateOptions(createOptions);
     const core = new DefaultCore(element, map);
     const exhibition = new Exhibition(core, options);
     await this.applyCreateOptions(exhibition, createOptions);
     return exhibition;
+  }
+
+  /**
+   * Validate create options.
+   */
+  private static validateCreateOptions(createOptions: ExhibitionCreateOptions) {
+    if (!createOptions.init && createOptions.updatePreview) {
+      throw new Error(
+        "Cannot update preview without initializing exhibitions first",
+      );
+    }
   }
 
   /**
@@ -195,11 +203,17 @@ export class Exhibition extends AbstractWraplet<
     exhibition: Exhibition,
     createOptions: ExhibitionCreateOptions = {},
   ): Promise<void> {
-    if (createOptions.init) {
+    const options = {
+      init: true,
+      updatePreview: true,
+      ...createOptions,
+    };
+
+    if (options.init) {
       await exhibition.init();
     }
 
-    if (createOptions.updatePreview) {
+    if (options.updatePreview) {
       await exhibition.updatePreview();
     }
   }
