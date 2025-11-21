@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Advanced Priorities</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body>
+<div data-js-exhibition class="p-3">
+    <div class="mb-3">
+        <h4>Preview</h4>
+        <iframe data-js-exhibition-preview style="border:1px solid #ccc; width:100%; min-height:200px; border-radius:4px"></iframe>
+    </div>
+    <div class="mb-3">
+        <button data-js-exhibition-updater class="btn btn-primary">Update</button>
+    </div>
+
+    <div class="mb-3">
+        <h5>HTML</h5>
+        <div data-js-exhibition-editor
+             data-js-options='{"monacoEditorOptions": {"language": "html", "value": "<div id=\"container\" class=\"colored\"></div>"}, "priority": 2}'
+             style="height: 120px;"></div>
+    </div>
+    <div class="mb-3">
+        <h5>CSS</h5>
+        <div data-js-exhibition-editor
+             data-js-options='{"monacoEditorOptions": {"language": "css", "value": ".colored { background-color: lightblue; }"}, "priority": 1, "location": "head"}'
+             style="height: 120px;"></div>
+    </div>
+    <div class="mb-3">
+        <h5>TypeScript</h5>
+        <div data-js-exhibition-editor
+             data-js-options='{"monacoEditorOptions": {"language": "typescript", "value": "const el: HTMLDivElement = document.getElementById(\"container\")!; el.innerHTML = \"<h1 id=\\\"greeting\\\">Hello priorities</h1>\";"}, "priority": 0}'
+             style="height: 120px;"></div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/monaco-editor@0.54.0/min/vs/loader.js"></script>
+<script>
+    require.config({ paths: { vs: 'https://cdn.jsdelivr.net/npm/monaco-editor@0.54.0/min/vs' } });
+    require(['vs/editor/editor.main'], async function () {
+        const ExhibitionModule = await import('/dist/index.js');
+        const Exhibition = ExhibitionModule.Exhibition;
+        const defaultMonacoOptions = { value: '', minimap: { enabled: false }, scrollBeyondLastLine: false };
+        await Exhibition.createMultiple(document.body, undefined, Exhibition.getMapWithMonacoEditor({ monaco: monaco, monacoEditorOptions: defaultMonacoOptions }));
+    });
+</script>
+</body>
+</html>

@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Custom Alterer</title>
+</head>
+<body>
+<div data-js-exhibition>
+    <div>
+        <h4>Preview</h4>
+        <iframe data-js-exhibition-preview style="border:1px solid #ccc; width:100%; min-height:160px"></iframe>
+    </div>
+    <div class="mb-2">
+        <button data-js-exhibition-updater>Update</button>
+    </div>
+    <div>
+        <h5>HTML</h5>
+        <div data-js-exhibition-editor
+             data-js-options='{"monacoEditorOptions": {"language": "html", "value": "<div id=\"root\"></div>"}, "priority": 0}'
+             style="height: 100px;"></div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/monaco-editor@0.54.0/min/vs/loader.js"></script>
+<script>
+    require.config({ paths: { vs: 'https://cdn.jsdelivr.net/npm/monaco-editor@0.54.0/min/vs' } });
+    require(['vs/editor/editor.main'], async function () {
+        const ExhibitionModule = await import('/dist/index.js');
+        const Exhibition = ExhibitionModule.Exhibition;
+        const exhibitions = await Exhibition.createMultiple(document.body, undefined, Exhibition.getMapWithMonacoEditor({
+            monaco: monaco,
+            monacoEditorOptions: { value: '', minimap: { enabled: false }, scrollBeyondLastLine: false }
+        }), { init: false, updatePreview: false });
+
+        // Register custom document alterer to inject an element into the preview
+        const ex = exhibitions[0];
+        ex.addPreviewAlterer(async (doc) => {
+            const mark = doc.createElement('div');
+            mark.id = 'injected-by-alterer';
+            mark.textContent = 'Injected';
+            doc.body.appendChild(mark);
+        }, 999); // high priority, but after HTML which is 0 in this fixture
+
+        await ex.updatePreview();
+    });
+
+</script>
+</body>
+</html>
