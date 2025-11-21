@@ -57,9 +57,7 @@ test("custom document alterer injects marker element", async ({ page }) => {
   await expect(iframe.locator("#injected-by-alterer")).toHaveText(/Injected/i);
 });
 
-test("custom tag attributes are applied and module script runs", async ({
-  page,
-}) => {
+test("custom tag attributes are applied", async ({ page }) => {
   await page.goto("/tests/functional/html/custom-attributes.html");
   await page.waitForLoadState("networkidle");
   await page.getByRole("button", { name: /update/i }).click();
