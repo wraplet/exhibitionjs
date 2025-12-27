@@ -3,6 +3,10 @@ import {
   Constructable,
   Core,
   DefaultCore,
+  Groupable,
+  NodeTreeParent,
+  WrapletApi,
+  WrapletApiFactoryArgs,
   WrapletChildrenMap,
 } from "wraplet";
 import { ExhibitionPreview } from "./ExhibitionPreview";
@@ -12,7 +16,11 @@ import {
 } from "./ExhibitionMonacoEditor";
 import { exhibitionDefaultAttribute } from "./selectors";
 import { DocumentAltererProviderWraplet } from "./types/DocumentAltererProviderWraplet";
-import { ElementStorage, Storage } from "wraplet/storage";
+import {
+  ElementAttributeStorage,
+  KeyValueStorage,
+  StorageWrapper,
+} from "wraplet/storage";
 import { DocumentAlterer } from "./types/DocumentAlterer";
 
 export type ExhibitionOptions = {
@@ -53,23 +61,47 @@ export class Exhibition extends AbstractWraplet<
   HTMLElement,
   typeof ExhibitionMap
 > {
-  private options: Storage<Required<ExhibitionOptions>>;
+  private options: KeyValueStorage<Required<ExhibitionOptions>>;
   constructor(
     core: Core<HTMLElement, typeof ExhibitionMap>,
     options: ExhibitionOptions = {},
+    optionsStorage?: KeyValueStorage<Partial<ExhibitionOptions>>,
   ) {
     super(core);
     const defaultOptions: Required<ExhibitionOptions> = {
       updaterSelector: "[data-js-exhibition-updater]",
     };
-    this.options = new ElementStorage<Required<ExhibitionOptions>>(
-      this.node,
-      exhibitionDefaultAttribute,
+    const optsStorage =
+      optionsStorage ??
+      new ElementAttributeStorage<Partial<ExhibitionOptions>, true>(
+        true,
+        this.node,
+        "data-js-options",
+        {},
+        {
+          updaterSelector: (data: unknown) => typeof data === "string",
+        },
+      );
+    this.options = new StorageWrapper<Required<ExhibitionOptions>>(
+      optsStorage,
       { ...defaultOptions, ...options },
       {
         updaterSelector: (data: unknown) => typeof data === "string",
       },
     );
+  }
+
+  protected createWrapletApi(
+    args: WrapletApiFactoryArgs<HTMLElement, typeof ExhibitionMap>,
+  ): WrapletApi<HTMLElement> &
+    NodeTreeParent["wraplet"] &
+    Groupable["wraplet"] {
+    args.initializeCallback = this.initializeBody.bind(this);
+    return super.createWrapletApi(args);
+  }
+
+  private async initializeBody() {
+    await this.initializeMonacoEditors();
     for (const editor of this.children.editors) {
       this.children.preview.addDocumentAlterer(
         editor.getDocumentAlterer(),
@@ -78,7 +110,7 @@ export class Exhibition extends AbstractWraplet<
     }
 
     const updaterElements = this.node.querySelectorAll(
-      this.options.get("updaterSelector"),
+      await this.options.get("updaterSelector"),
     );
 
     for (const element of updaterElements) {
@@ -88,8 +120,8 @@ export class Exhibition extends AbstractWraplet<
     }
   }
 
-  public async init() {
-    await this.initalizeMonacoEditors();
+  public async initialize() {
+    return this.wraplet.initialize();
   }
 
   /**
@@ -118,14 +150,14 @@ export class Exhibition extends AbstractWraplet<
     await this.children.preview.update();
   }
 
-  public async initalizeMonacoEditors() {
+  public async initializeMonacoEditors() {
     for (const editor of this.children.editors) {
       if (editor instanceof ExhibitionMonacoEditor) {
         if (editor.isEditorInitialized()) {
           continue;
         }
 
-        await editor.init();
+        await editor.initialize();
       }
     }
   }
@@ -210,7 +242,7 @@ export class Exhibition extends AbstractWraplet<
     };
 
     if (options.init) {
-      await exhibition.init();
+      await exhibition.initialize();
     }
 
     if (options.updatePreview) {

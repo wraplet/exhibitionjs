@@ -1,10 +1,21 @@
-import { AbstractWraplet, Core, DefaultCore } from "wraplet";
-import { Storage, StorageValidators } from "wraplet/storage";
+import {
+  AbstractWraplet,
+  Core,
+  DefaultCore,
+  Groupable,
+  NodeTreeParent,
+  WrapletApi,
+  WrapletApiFactoryArgs,
+} from "wraplet";
+import {
+  ElementAttributeStorage,
+  KeyValueStorage,
+  StorageValidators,
+  StorageWrapper,
+} from "wraplet/storage";
 
 import type * as monaco from "monaco-editor";
 import { DocumentAltererProviderWraplet } from "./types/DocumentAltererProviderWraplet";
-import { ElementStorage } from "wraplet/storage";
-import { defaultOptionsAttribute } from "./selectors";
 import {
   getTagFromType,
   getTypeFromLanguage,
@@ -33,11 +44,6 @@ export type ExhibitionMonacoEditorOptions = {
    * Monaco options for the editor.
    */
   monacoEditorOptions?: monaco.editor.IStandaloneEditorConstructionOptions;
-
-  /**
-   * Attribute storing the options in the form of JSON string.
-   */
-  optionsAttribute?: string;
 
   /**
    * Location where the editor should be inserted.
@@ -74,18 +80,26 @@ export class ExhibitionMonacoEditor
   extends AbstractWraplet<HTMLElement>
   implements DocumentAltererProviderWraplet
 {
-  private monaco: MonacoInstance;
+  private monaco: MonacoInstance | null = null;
   private editor: monaco.editor.IStandaloneCodeEditor | null = null;
-  private options: Storage<RequiredMonacoEditorOptions>;
+  private options: KeyValueStorage<RequiredMonacoEditorOptions>;
 
-  constructor(core: Core<HTMLElement>, options: ExhibitionMonacoEditorOptions) {
+  private priority: number = 0;
+  private monacoEditorOptions:
+    | RequiredMonacoEditorOptions["monacoEditorOptions"]
+    | null = null;
+
+  constructor(
+    core: Core<HTMLElement>,
+    options: ExhibitionMonacoEditorOptions,
+    optionsStorage?: KeyValueStorage<Partial<ExhibitionMonacoEditorOptions>>,
+  ) {
     super(core);
 
     const defaultOptions: Omit<
       RequiredMonacoEditorOptions,
       "monacoEditorCreator" | "monaco"
     > = {
-      optionsAttribute: "data-js-options",
       location: "body",
       priority: 0,
       trimDefaultValue: true,
@@ -93,7 +107,6 @@ export class ExhibitionMonacoEditor
     };
 
     const validators: StorageValidators<ExhibitionMonacoEditorOptions> = {
-      optionsAttribute: (data: unknown) => typeof data === "string",
       // We generally don't validate monacoOptions, leaving it to the monaco editor.
       location: (data: unknown) =>
         typeof data === "string" && ["head", "body"].includes(data),
@@ -110,57 +123,71 @@ export class ExhibitionMonacoEditor
       ...options.monacoEditorOptions,
     };
 
-    this.options = new ElementStorage<RequiredMonacoEditorOptions>(
-      this.node,
-      defaultOptionsAttribute,
+    const optsStorage: KeyValueStorage<Partial<ExhibitionMonacoEditorOptions>> =
+      optionsStorage ||
+      new ElementAttributeStorage<Partial<ExhibitionMonacoEditorOptions>, true>(
+        true,
+        core.node,
+        "data-js-options",
+        {},
+        {},
+      );
+
+    this.options = new StorageWrapper<RequiredMonacoEditorOptions>(
+      optsStorage,
       { ...defaultOptions, ...options },
       validators,
-      {
-        elementOptionsMerger: (defaults, options) => {
-          options.monacoEditorOptions = {
-            ...defaults.monacoEditorOptions,
-            ...options.monacoEditorOptions,
-          };
-
-          return { ...defaults, ...options };
-        },
-      },
     );
+  }
 
-    this.monaco = this.options.get("monaco");
-
-    if (this.options.get("trimDefaultValue")) {
-      const monacoOptions = this.options.get("monacoEditorOptions");
-      if (monacoOptions.value) {
-        monacoOptions.value = ExhibitionMonacoEditor.trimDefaultValue(
-          monacoOptions.value,
-        );
-        this.options.set("monacoEditorOptions", monacoOptions);
-      }
-    }
-
-    this.validateOptions();
+  protected createWrapletApi(
+    args: WrapletApiFactoryArgs<HTMLElement, {}>,
+  ): WrapletApi<HTMLElement> &
+    NodeTreeParent["wraplet"] &
+    Groupable["wraplet"] {
+    args.initializeCallback = this.initialize.bind(this);
+    args.destroyCallback = async () => {
+      this.destroy();
+    };
+    return super.createWrapletApi(args);
   }
 
   public isEditorInitialized(): boolean {
     return this.editor !== null;
   }
 
-  public async init() {
+  public async initialize() {
+    this.priority = await this.options.get("priority");
+    this.monacoEditorOptions = await this.options.get("monacoEditorOptions");
+
+    if (await this.options.get("trimDefaultValue")) {
+      const monacoOptions = await this.options.get("monacoEditorOptions");
+      if (monacoOptions.value) {
+        monacoOptions.value = ExhibitionMonacoEditor.trimDefaultValue(
+          monacoOptions.value,
+        );
+        await this.options.set("monacoEditorOptions", monacoOptions);
+      }
+    }
+
+    await this.validateOptions();
+
+    this.monaco = await this.options.get("monaco");
+
     const editorCreator: EditorCreator =
-      this.options.get("monacoEditorCreator") ||
+      (await this.options.get("monacoEditorCreator")) ||
       (async (options, element, monaco) =>
         ExhibitionMonacoEditor.createMonacoEditor(options, element, monaco));
 
     this.editor = await editorCreator(
-      this.options.get("monacoEditorOptions"),
+      await this.options.get("monacoEditorOptions"),
       this.node,
       this.monaco,
     );
   }
 
   public getPriority(): number {
-    return this.options.get("priority");
+    return this.priority;
   }
 
   /**
@@ -171,16 +198,25 @@ export class ExhibitionMonacoEditor
   }
 
   private async alterDocument(document: Document): Promise<void> {
+    const monaco = this.monaco;
+    if (!monaco) {
+      throw new Error(
+        "Monaco instance is not available. Is wraplet initialized?",
+      );
+    }
+
     const language = this.getLanguage();
     const content =
-      language === "typescript" ? await this.getTSValueAsJS() : this.getValue();
+      language === "typescript"
+        ? await this.getTSValueAsJS(monaco)
+        : this.getValue();
 
-    const location = this.options.get("location");
+    const location = await this.options.get("location");
     const type = getTypeFromLanguage(language);
 
     if (isSingleTagType(type)) {
       const tag = getTagFromType(type);
-      const tagAttributes = this.options.get("tagAttributes") ?? {};
+      const tagAttributes = (await this.options.get("tagAttributes")) ?? {};
       const tagElement = document.createElement(tag);
       for (const [key, value] of Object.entries(tagAttributes)) {
         tagElement.setAttribute(key, value);
@@ -199,14 +235,14 @@ export class ExhibitionMonacoEditor
   /**
    * Additional validation.
    */
-  private validateOptions() {
-    if (!this.options.get("monacoEditorOptions").language) {
+  private async validateOptions() {
+    if (!(await this.options.get("monacoEditorOptions")).language) {
       throw new Error("Missing language in monacoOptions");
     }
 
     const type = getTypeFromLanguage(this.getLanguage());
     if (!isSingleTagType(type)) {
-      if (this.options.get("tagAttributes")) {
+      if (await this.options.get("tagAttributes")) {
         throw new Error(
           "'tagAttributes' option is only allowed for single tag types",
         );
@@ -219,12 +255,12 @@ export class ExhibitionMonacoEditor
     return this.editor;
   }
 
-  private async getTSValueAsJS() {
+  private async getTSValueAsJS(monaco: MonacoInstance) {
     const model = this.getEditor().getModel();
     if (!model) throw new Error("Model is not available");
 
     // Make sure TypeScript eager sync is enabled
-    this.monaco.languages.typescript.typescriptDefaults.setEagerModelSync(true);
+    monaco.languages.typescript.typescriptDefaults.setEagerModelSync(true);
 
     // Ensure we're using file:/// URI
     const uri = model.uri;
@@ -242,7 +278,7 @@ export class ExhibitionMonacoEditor
       | null
     > => {
       try {
-        return await this.monaco.languages.typescript.getTypeScriptWorker();
+        return await monaco.languages.typescript.getTypeScriptWorker();
       } catch (error) {
         if (error !== "TypeScript not registered!") throw error;
         if (attempts <= 0) return null;
@@ -279,7 +315,12 @@ export class ExhibitionMonacoEditor
   }
 
   private getLanguage(): MonacoEditorLanguages {
-    const monacoOptions = this.options.get("monacoEditorOptions");
+    const monacoOptions = this.monacoEditorOptions;
+    if (!monacoOptions) {
+      throw new Error(
+        "Monaco options are not available. Is wraplet initialized?",
+      );
+    }
 
     if (!monacoOptions["language"]) {
       throw new Error("Missing language in monacoOptions");
@@ -319,7 +360,6 @@ export class ExhibitionMonacoEditor
 
   public destroy() {
     this.editor?.dispose();
-    super.destroy();
   }
 
   /**
