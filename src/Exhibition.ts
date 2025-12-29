@@ -3,9 +3,7 @@ import {
   Constructable,
   Core,
   DefaultCore,
-  Groupable,
-  NodeTreeParent,
-  WrapletApi,
+  RichWrapletApi,
   WrapletApiFactoryArgs,
   WrapletChildrenMap,
 } from "wraplet";
@@ -93,9 +91,7 @@ export class Exhibition extends AbstractWraplet<
 
   protected createWrapletApi(
     args: WrapletApiFactoryArgs<HTMLElement, typeof ExhibitionMap>,
-  ): WrapletApi<HTMLElement> &
-    NodeTreeParent["wraplet"] &
-    Groupable["wraplet"] {
+  ): RichWrapletApi<HTMLElement> {
     args.initializeCallback = this.initializeBody.bind(this);
     return super.createWrapletApi(args);
   }
