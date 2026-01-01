@@ -2,8 +2,10 @@ import {
   AbstractWraplet,
   Constructable,
   Core,
+  createDefaultInitializeWrapper,
   DefaultCore,
   RichWrapletApi,
+  Status,
   WrapletApiFactoryArgs,
   WrapletChildrenMap,
 } from "wraplet";
@@ -34,7 +36,7 @@ export type ExhibitionCreateOptions = {
 };
 
 export type ExhibitionMapOptions = {
-  Class: Constructable<DocumentAltererProviderWraplet>;
+  Class?: Constructable<DocumentAltererProviderWraplet>;
   selectEditors?: boolean;
 };
 
@@ -59,6 +61,13 @@ export class Exhibition extends AbstractWraplet<
   HTMLElement,
   typeof ExhibitionMap
 > {
+  private status: Status = {
+    isInitialized: false,
+    isDestroyed: false,
+    isGettingInitialized: false,
+    isGettingDestroyed: false,
+  };
+
   private options: KeyValueStorage<Required<ExhibitionOptions>>;
   constructor(
     core: Core<HTMLElement, typeof ExhibitionMap>,
@@ -87,16 +96,30 @@ export class Exhibition extends AbstractWraplet<
         updaterSelector: (data: unknown) => typeof data === "string",
       },
     );
+
+    // We are wrapping the our initializer logic into a wraplet-compatible wrapper, ensuring
+    // that it will be fit to use in wraplet API.
+    this.initialize = createDefaultInitializeWrapper(
+      this.status,
+      this.core,
+      this.wraplet.destroy,
+      this.initialize,
+    );
   }
 
   protected createWrapletApi(
     args: WrapletApiFactoryArgs<HTMLElement, typeof ExhibitionMap>,
   ): RichWrapletApi<HTMLElement> {
-    args.initializeCallback = this.initializeBody.bind(this);
-    return super.createWrapletApi(args);
+    // We will use our own status.
+    // This will be passed to the default destroy wrapper, making it use it.
+    args.status = this.status;
+    const api = super.createWrapletApi(args);
+    api.initialize = this.initialize.bind(this);
+
+    return api;
   }
 
-  private async initializeBody() {
+  public async initialize() {
     await this.initializeMonacoEditors();
     for (const editor of this.children.editors) {
       this.children.preview.addDocumentAlterer(
@@ -114,10 +137,6 @@ export class Exhibition extends AbstractWraplet<
         this.updatePreview();
       });
     }
-  }
-
-  public async initialize() {
-    return this.wraplet.initialize();
   }
 
   /**
@@ -233,9 +252,15 @@ export class Exhibition extends AbstractWraplet<
   ): Promise<void> {
     const options = {
       init: true,
-      updatePreview: true,
+      updatePreview: false,
       ...createOptions,
     };
+
+    if (!options.init && options.updatePreview) {
+      throw new Error(
+        "'updatePreview' option cannot be enabled without the 'init' one because updating preview requires initialization.",
+      );
+    }
 
     if (options.init) {
       await exhibition.initialize();
@@ -281,6 +306,7 @@ export class Exhibition extends AbstractWraplet<
     const allOptions: Required<ExhibitionMapOptions> = {
       ...{
         selectEditors: true,
+        Class: ExhibitionMonacoEditor,
       },
       ...options,
     };

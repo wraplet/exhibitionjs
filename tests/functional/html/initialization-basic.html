@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+</head>
+<body>
+<div data-js-exhibition>
+    <div>
+        <div style="margin-bottom: 8px">
+            <div>
+                <h4>Preview</h4>
+            </div>
+            <div>
+                <iframe data-js-exhibition-preview
+                        style="border: 1px solid #dee2e6; display: block; width: 100%; border-radius: 4px"></iframe>
+            </div>
+        </div>
+        <div style="margin-bottom: 24px">
+            <button data-js-exhibition-updater>Update</button>
+        </div>
+    </div>
+    <div style="margin-bottom: 24px">
+        <div>
+            <div style="padding-bottom: 24px">
+                <div>
+                    <div>
+                        <h4>HTML</h4>
+                    </div>
+                    <div>
+                        <div data-js-exhibition-editor
+                             data-js-options='{"monacoEditorOptions": {"language": "html", "value":"<div id=\"container\"></div>"}, "priority": 0}'
+                             style="height: 300px;"></div>
+                    </div>
+                </div>
+            </div>
+            <div style="padding-bottom: 24px">
+                <div>
+                    <div>
+                        <h4>TypeScript</h4>
+                    </div>
+                    <div>
+                        <div data-js-exhibition-editor
+                             data-js-options='{"monacoEditorOptions": {"language": "typescript", "value": "const element: HTMLDivElement = document.getElementById(\"container\");\nelement.innerHTML = \"<h1>Hello world</h1>\";"}, "priority": 1, "tagAttributes":{"type":"module"}}'
+                             style="height: 300px;"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/monaco-editor@0.54.0/min/vs/loader.js"></script>
+<script>
+    require.config({
+        paths: { vs: 'https://cdn.jsdelivr.net/npm/monaco-editor@0.54.0/min/vs' }
+    });
+    require(['vs/editor/editor.main'], async function () {
+        const ExhibitionModule = await import("/dist/index.js");
+        /** @type {typeof Exhibition} */
+        const Exhibition = ExhibitionModule.Exhibition;
+
+        // These values will be overwritten by the options put directly on the elements.
+        const defaultMonacoOptions = {
+            value: "",
+            minimap: {
+                enabled: false,
+            },
+            scrollBeyondLastLine: false,
+        };
+
+        // We can change the default attribute identifying the Exhibition instance and its dependencies
+        // by modifying the dependency map / map options.
+        await Exhibition.createMultiple(document.body, undefined, Exhibition.getMapWithMonacoEditor({
+            monaco: monaco,
+            monacoEditorOptions: defaultMonacoOptions,
+        }));
+    });
+
+</script>
+</body>
+</html>

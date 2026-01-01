@@ -58,6 +58,8 @@
         const ExhibitionModule = await import("/dist/index.js");
         /** @type {typeof Exhibition} */
         const Exhibition = ExhibitionModule.Exhibition;
+        const ExhibitionMonacoEditor = ExhibitionModule.ExhibitionMonacoEditor;
+
 
         // These values will be overwritten by the options put directly on the elements.
         const defaultMonacoOptions = {
@@ -68,12 +70,24 @@
             scrollBeyondLastLine: false,
         };
 
-        // We can change the default attribute identifying the Exhibition instance and its dependencies
-        // by modifying the dependency map / map options.
-        const exhibitions = await Exhibition.createMultiple(document.body, undefined, Exhibition.getMapWithMonacoEditor({
-            monaco: monaco,
-            monacoEditorOptions: defaultMonacoOptions,
-        }));
+        // We don't want for Exhibitions to init automatically.
+        const exhibitions = await Exhibition.createMultiple(document.body, undefined, Exhibition.getMap({
+            selectEditors: false,
+        }), {}, {init: false});
+
+        const exhibition = exhibitions[0];
+
+        const editorElements = document.querySelectorAll("[data-js-exhibition-editor]");
+        for (const element of editorElements) {
+            const editor = ExhibitionMonacoEditor.create(element, {
+                monaco: monaco,
+                monacoEditorOptions: defaultMonacoOptions,
+            });
+            exhibition.addEditor(editor);
+        }
+
+        await exhibition.initialize();
+        await exhibition.updatePreview();
     });
 
 </script>
