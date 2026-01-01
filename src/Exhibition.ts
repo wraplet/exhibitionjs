@@ -97,14 +97,16 @@ export class Exhibition extends AbstractWraplet<
       },
     );
 
+    const originalInitialize = this.initialize.bind(this);
+
     // We are wrapping the our initializer logic into a wraplet-compatible wrapper, ensuring
     // that it will be fit to use in wraplet API.
     this.initialize = createDefaultInitializeWrapper(
       this.status,
       this.core,
       this.wraplet.destroy,
-      this.initialize,
-    );
+      originalInitialize,
+    ).bind(this);
   }
 
   protected createWrapletApi(
@@ -114,7 +116,7 @@ export class Exhibition extends AbstractWraplet<
     // This will be passed to the default destroy wrapper, making it use it.
     args.status = this.status;
     const api = super.createWrapletApi(args);
-    api.initialize = this.initialize.bind(this);
+    api.initialize = this.initialize;
 
     return api;
   }
@@ -195,6 +197,7 @@ export class Exhibition extends AbstractWraplet<
     options: ExhibitionOptions = {},
     createOptions: ExhibitionCreateOptions = {},
   ): Promise<Exhibition[]> {
+    createOptions = this.fillCreateOptionsWithDefaults(createOptions);
     this.validateCreateOptions(createOptions);
 
     const exhibitions = this.createWraplets<HTMLElement, Exhibition>(
@@ -225,11 +228,22 @@ export class Exhibition extends AbstractWraplet<
     options: ExhibitionOptions = {},
     createOptions: ExhibitionCreateOptions = {},
   ): Promise<Exhibition> {
+    createOptions = this.fillCreateOptionsWithDefaults(createOptions);
     this.validateCreateOptions(createOptions);
     const core = new DefaultCore(element, map);
     const exhibition = new Exhibition(core, options);
     await this.applyCreateOptions(exhibition, createOptions);
     return exhibition;
+  }
+
+  private static fillCreateOptionsWithDefaults(
+    createOptions: ExhibitionCreateOptions,
+  ) {
+    return {
+      init: true,
+      updatePreview: false,
+      ...createOptions,
+    };
   }
 
   /**
@@ -248,14 +262,8 @@ export class Exhibition extends AbstractWraplet<
    */
   private static async applyCreateOptions(
     exhibition: Exhibition,
-    createOptions: ExhibitionCreateOptions = {},
+    options: ExhibitionCreateOptions = {},
   ): Promise<void> {
-    const options = {
-      init: true,
-      updatePreview: false,
-      ...createOptions,
-    };
-
     if (!options.init && options.updatePreview) {
       throw new Error(
         "'updatePreview' option cannot be enabled without the 'init' one because updating preview requires initialization.",
