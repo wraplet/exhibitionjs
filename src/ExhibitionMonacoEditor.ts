@@ -132,12 +132,13 @@ export class ExhibitionMonacoEditor
         {},
         {},
         {
-          elementOptionsMerger: (defaults, options) => {
-            options.monacoEditorOptions = {
+          elementOptionsMerger: (defaults, attributeOptions) => {
+            attributeOptions.monacoEditorOptions = {
               ...defaults.monacoEditorOptions,
               ...options.monacoEditorOptions,
+              ...attributeOptions.monacoEditorOptions,
             };
-            return { ...defaults, ...options };
+            return { ...defaults, ...options, ...attributeOptions };
           },
         },
       );
