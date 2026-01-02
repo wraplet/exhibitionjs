@@ -2,9 +2,7 @@ import {
   AbstractWraplet,
   Core,
   DefaultCore,
-  Groupable,
-  NodeTreeParent,
-  WrapletApi,
+  RichWrapletApi,
   WrapletApiFactoryArgs,
 } from "wraplet";
 import {
@@ -131,6 +129,15 @@ export class ExhibitionMonacoEditor
         "data-js-options",
         {},
         {},
+        {
+          elementOptionsMerger: (defaults, options) => {
+            options.monacoEditorOptions = {
+              ...defaults.monacoEditorOptions,
+              ...options.monacoEditorOptions,
+            };
+            return { ...defaults, ...options };
+          },
+        },
       );
 
     this.options = new StorageWrapper<RequiredMonacoEditorOptions>(
@@ -142,9 +149,7 @@ export class ExhibitionMonacoEditor
 
   protected createWrapletApi(
     args: WrapletApiFactoryArgs<HTMLElement, {}>,
-  ): WrapletApi<HTMLElement> &
-    NodeTreeParent["wraplet"] &
-    Groupable["wraplet"] {
+  ): RichWrapletApi<HTMLElement> {
     args.initializeCallback = this.initialize.bind(this);
     args.destroyCallback = async () => {
       this.destroy();
@@ -152,11 +157,10 @@ export class ExhibitionMonacoEditor
     return super.createWrapletApi(args);
   }
 
-  public isEditorInitialized(): boolean {
-    return this.editor !== null;
-  }
-
   public async initialize() {
+    if (this.wraplet.status.isInitialized) {
+      throw new Error("ExhibitionMonacoEditor is already initialized");
+    }
     this.priority = await this.options.get("priority");
     this.monacoEditorOptions = await this.options.get("monacoEditorOptions");
 

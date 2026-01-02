@@ -49,7 +49,11 @@ test("exhibition initialization with editor manually added beforehand", async ({
 
   const iframe = page.frameLocator("[data-js-exhibition-preview]");
 
-  // Wait for the container to appear and the script to execute
+  //await page.waitForTimeout(100000);
+
+  // Wait for the container to appear.
+  await iframe.locator("#container").waitFor();
+  // Wait for the script to execute.
   await iframe.locator("#container h1").waitFor();
 
   // Verify script ran and modified DOM
