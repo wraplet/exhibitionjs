@@ -20,10 +20,24 @@ export class ExhibitionPreview extends AbstractWraplet<HTMLIFrameElement> {
     alterer: DocumentAlterer,
     priority: number = 0,
   ): void {
+    if (this.hasDocumentAlterer(alterer)) {
+      return;
+    }
+
     this.alterers.push({
       callback: alterer,
       priority: priority,
     });
+  }
+
+  /**
+   * Checks if alterer is already registered.
+   * @param alterer
+   */
+  public hasDocumentAlterer(alterer: DocumentAlterer): boolean {
+    return this.alterers.some(
+      (altererData) => altererData.callback === alterer,
+    );
   }
 
   public async update(): Promise<void> {

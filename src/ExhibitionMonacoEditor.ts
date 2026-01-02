@@ -94,6 +94,8 @@ export class ExhibitionMonacoEditor
   ) {
     super(core);
 
+    this.alterDocument = this.alterDocument.bind(this);
+
     const defaultOptions: Omit<
       RequiredMonacoEditorOptions,
       "monacoEditorCreator" | "monaco"
@@ -233,7 +235,7 @@ export class ExhibitionMonacoEditor
   }
 
   public getDocumentAlterer(): DocumentAlterer {
-    return this.alterDocument.bind(this);
+    return this.alterDocument;
   }
 
   /**

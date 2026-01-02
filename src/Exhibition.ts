@@ -126,6 +126,9 @@ export class Exhibition extends AbstractWraplet<
       throw new Error("Exhibition is already initialized");
     }
     await this.initializeMonacoEditors();
+    for (const editor of this.children.editors) {
+      this.addPreviewAlterer(editor.getDocumentAlterer(), editor.getPriority());
+    }
 
     const updaterElements = this.node.querySelectorAll(
       await this.options.get("updaterSelector"),
@@ -143,7 +146,6 @@ export class Exhibition extends AbstractWraplet<
    */
   public addEditor(editor: DocumentAltererProviderWraplet): void {
     this.children.editors.add(editor);
-    this.addPreviewAlterer(editor.getDocumentAlterer(), editor.getPriority());
   }
 
   /**

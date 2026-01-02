@@ -10,7 +10,7 @@ lint-fix:
 lint:
 	pnpm run lint
 
-tests:
+tests: build
 	pnpm run tests
 
 cleanup-dist:
