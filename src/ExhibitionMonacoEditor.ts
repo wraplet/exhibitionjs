@@ -1,6 +1,8 @@
 import {
   AbstractWraplet,
   Core,
+  createDefaultDestroyWrapper,
+  createDefaultInitializeWrapper,
   DefaultCore,
   RichWrapletApi,
   Status,
@@ -162,44 +164,56 @@ export class ExhibitionMonacoEditor
     args: WrapletApiFactoryArgs<HTMLElement, {}>,
   ): RichWrapletApi<HTMLElement> {
     args.status = this.status;
-    args.initializeCallback = this.initialize.bind(this);
-    args.destroyCallback = async () => {
-      this.destroy();
-    };
-    return super.createWrapletApi(args);
+    const api = super.createWrapletApi(args);
+    api.initialize = this.initialize.bind(this);
+    api.destroy = this.destroy.bind(this);
+    return api;
   }
 
   public async initialize() {
-    if (this.wraplet.status.isInitialized) {
-      throw new Error("ExhibitionMonacoEditor is already initialized");
-    }
-    this.priority = await this.options.get("priority");
-    this.monacoEditorOptions = await this.options.get("monacoEditorOptions");
-
-    if (await this.options.get("trimDefaultValue")) {
-      const monacoOptions = await this.options.get("monacoEditorOptions");
-      if (monacoOptions.value) {
-        monacoOptions.value = ExhibitionMonacoEditor.trimDefaultValue(
-          monacoOptions.value,
+    return createDefaultInitializeWrapper(
+      this.status,
+      this.core,
+      this.wraplet.destroy,
+      async () => {
+        if (this.status.isInitialized) {
+          throw new Error("ExhibitionMonacoEditor is already initialized");
+        }
+        this.priority = await this.options.get("priority");
+        this.monacoEditorOptions = await this.options.get(
+          "monacoEditorOptions",
         );
-        await this.options.set("monacoEditorOptions", monacoOptions);
-      }
-    }
 
-    await this.validateOptions();
+        if (await this.options.get("trimDefaultValue")) {
+          const monacoOptions = await this.options.get("monacoEditorOptions");
+          if (monacoOptions.value) {
+            monacoOptions.value = ExhibitionMonacoEditor.trimDefaultValue(
+              monacoOptions.value,
+            );
+            await this.options.set("monacoEditorOptions", monacoOptions);
+          }
+        }
 
-    this.monaco = await this.options.get("monaco");
+        await this.validateOptions();
 
-    const editorCreator: EditorCreator =
-      (await this.options.get("monacoEditorCreator")) ||
-      (async (options, element, monaco) =>
-        ExhibitionMonacoEditor.createMonacoEditor(options, element, monaco));
+        this.monaco = await this.options.get("monaco");
 
-    this.editor = await editorCreator(
-      await this.options.get("monacoEditorOptions"),
-      this.node,
-      this.monaco,
-    );
+        const editorCreator: EditorCreator =
+          (await this.options.get("monacoEditorCreator")) ||
+          (async (options, element, monaco) =>
+            ExhibitionMonacoEditor.createMonacoEditor(
+              options,
+              element,
+              monaco,
+            ));
+
+        this.editor = await editorCreator(
+          await this.options.get("monacoEditorOptions"),
+          this.node,
+          this.monaco,
+        );
+      },
+    )();
   }
 
   public getPriority(): number {
@@ -374,8 +388,16 @@ export class ExhibitionMonacoEditor
     return trimmedLines.join("\n").trim();
   }
 
-  public destroy() {
-    this.editor?.dispose();
+  public async destroy() {
+    return createDefaultDestroyWrapper(
+      this.status,
+      this.core,
+      this,
+      [],
+      async () => {
+        this.editor?.dispose();
+      },
+    )();
   }
 
   /**

@@ -96,17 +96,6 @@ export class Exhibition extends AbstractWraplet<
         updaterSelector: (data: unknown) => typeof data === "string",
       },
     );
-
-    const originalInitialize = this.initialize.bind(this);
-
-    // We are wrapping the our initializer logic into a wraplet-compatible wrapper, ensuring
-    // that it will be fit to use in wraplet API.
-    this.initialize = createDefaultInitializeWrapper(
-      this.status,
-      this.core,
-      this.wraplet.destroy,
-      originalInitialize,
-    ).bind(this);
   }
 
   protected createWrapletApi(
@@ -114,39 +103,48 @@ export class Exhibition extends AbstractWraplet<
   ): RichWrapletApi<HTMLElement> {
     // We will use our own status.
     // This will be passed to the default destroy wrapper, making it use it.
-    args.status = this.status;
     const api = super.createWrapletApi(args);
-    api.initialize = this.initialize;
+    api.initialize = this.initialize.bind(this);
 
     return api;
   }
 
   public async initialize() {
-    if (this.status.isInitialized) {
-      throw new Error("Exhibition is already initialized");
-    }
+    return createDefaultInitializeWrapper(
+      this.status,
+      this.core,
+      this.wraplet.destroy,
+      async () => {
+        if (this.status.isInitialized) {
+          throw new Error("Exhibition is already initialized");
+        }
 
-    for (const editor of this.children.editors) {
-      this.addPreviewAlterer(editor.getDocumentAlterer(), editor.getPriority());
-      if (
-        editor.wraplet.status.isInitialized ||
-        editor.wraplet.status.isGettingInitialized
-      ) {
-        continue;
-      }
+        for (const editor of this.children.editors) {
+          this.addPreviewAlterer(
+            editor.getDocumentAlterer(),
+            editor.getPriority(),
+          );
+          if (
+            editor.wraplet.status.isInitialized ||
+            editor.wraplet.status.isGettingInitialized
+          ) {
+            continue;
+          }
 
-      await editor.wraplet.initialize();
-    }
+          await editor.wraplet.initialize();
+        }
 
-    const updaterElements = this.node.querySelectorAll(
-      await this.options.get("updaterSelector"),
-    );
+        const updaterElements = this.node.querySelectorAll(
+          await this.options.get("updaterSelector"),
+        );
 
-    for (const element of updaterElements) {
-      this.core.addEventListener(element, "click", () => {
-        this.updatePreview();
-      });
-    }
+        for (const element of updaterElements) {
+          this.core.addEventListener(element, "click", () => {
+            this.updatePreview();
+          });
+        }
+      },
+    )();
   }
 
   /**
