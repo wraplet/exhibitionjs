@@ -125,9 +125,17 @@ export class Exhibition extends AbstractWraplet<
     if (this.status.isInitialized) {
       throw new Error("Exhibition is already initialized");
     }
-    await this.initializeMonacoEditors();
+
     for (const editor of this.children.editors) {
       this.addPreviewAlterer(editor.getDocumentAlterer(), editor.getPriority());
+      if (
+        editor.wraplet.status.isInitialized ||
+        editor.wraplet.status.isGettingInitialized
+      ) {
+        continue;
+      }
+
+      await editor.wraplet.initialize();
     }
 
     const updaterElements = this.node.querySelectorAll(
@@ -164,18 +172,6 @@ export class Exhibition extends AbstractWraplet<
 
   public async updatePreview(): Promise<void> {
     await this.children.preview.update();
-  }
-
-  public async initializeMonacoEditors() {
-    for (const editor of this.children.editors) {
-      if (editor instanceof ExhibitionMonacoEditor) {
-        if (editor.wraplet.status.isInitialized) {
-          continue;
-        }
-
-        await editor.initialize();
-      }
-    }
   }
 
   /**

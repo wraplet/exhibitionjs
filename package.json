@@ -1,6 +1,6 @@
 {
   "name": "exhibitionjs",
-  "version": "0.19.0",
+  "version": "0.20.0",
   "description": "Library for showcasing your js/ts code snippets.",
   "main": "dist/index.js",
   "type": "module",
@@ -25,7 +25,7 @@
     "lint": "tsc --noemit && npx eslint './src/**/*.ts' './tests/**/*.ts'",
     "lint:fix": "npx eslint './src/**/*.ts' './tests/**/*.ts' --fix",
     "tests-setup": "npx playwright install chromium",
-    "tests": "npx playwright test"
+    "tests": "jest && npx playwright test"
   },
   "files": [
     "dist"

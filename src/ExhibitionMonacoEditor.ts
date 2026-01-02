@@ -3,6 +3,7 @@ import {
   Core,
   DefaultCore,
   RichWrapletApi,
+  Status,
   WrapletApiFactoryArgs,
 } from "wraplet";
 import {
@@ -82,6 +83,13 @@ export class ExhibitionMonacoEditor
   private editor: monaco.editor.IStandaloneCodeEditor | null = null;
   private options: KeyValueStorage<RequiredMonacoEditorOptions>;
 
+  private status: Status = {
+    isInitialized: false,
+    isDestroyed: false,
+    isGettingInitialized: false,
+    isGettingDestroyed: false,
+  };
+
   private priority: number = 0;
   private monacoEditorOptions:
     | RequiredMonacoEditorOptions["monacoEditorOptions"]
@@ -153,6 +161,7 @@ export class ExhibitionMonacoEditor
   protected createWrapletApi(
     args: WrapletApiFactoryArgs<HTMLElement, {}>,
   ): RichWrapletApi<HTMLElement> {
+    args.status = this.status;
     args.initializeCallback = this.initialize.bind(this);
     args.destroyCallback = async () => {
       this.destroy();
