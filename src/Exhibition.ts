@@ -2,11 +2,10 @@ import {
   AbstractWraplet,
   Constructable,
   Core,
-  createDefaultInitializeWrapper,
+  createDefaultInitializeCallback,
+  customizeDefaultWrapletApi,
   DefaultCore,
-  RichWrapletApi,
   Status,
-  WrapletApiFactoryArgs,
   WrapletChildrenMap,
 } from "wraplet";
 import { ExhibitionPreview } from "./ExhibitionPreview";
@@ -96,24 +95,23 @@ export class Exhibition extends AbstractWraplet<
         updaterSelector: (data: unknown) => typeof data === "string",
       },
     );
-  }
 
-  protected createWrapletApi(
-    args: WrapletApiFactoryArgs<HTMLElement, typeof ExhibitionMap>,
-  ): RichWrapletApi<HTMLElement> {
-    // We will use our own status.
-    // This will be passed to the default destroy wrapper, making it use it.
-    const api = super.createWrapletApi(args);
-    api.initialize = this.initialize.bind(this);
-
-    return api;
+    this.wraplet = customizeDefaultWrapletApi(
+      {
+        status: this.status,
+        initialize: this.initialize.bind(this),
+      },
+      this.wraplet,
+    );
   }
 
   public async initialize() {
-    return createDefaultInitializeWrapper(
-      this.status,
-      this.core,
-      this.wraplet.destroy,
+    return createDefaultInitializeCallback(
+      {
+        core: this.core,
+        status: this.status,
+        destroyCallback: this.wraplet.destroy,
+      },
       async () => {
         if (this.status.isInitialized) {
           throw new Error("Exhibition is already initialized");
@@ -191,7 +189,7 @@ export class Exhibition extends AbstractWraplet<
     createOptions: ExhibitionCreateOptions = {},
   ): Promise<Exhibition[]> {
     createOptions = this.fillCreateOptionsWithDefaults(createOptions);
-    this.validateCreateOptions(createOptions);
+    this.validateCreateOptions(createOptions, map);
 
     const exhibitions = this.createWraplets<HTMLElement, Exhibition>(
       node,
@@ -222,7 +220,7 @@ export class Exhibition extends AbstractWraplet<
     createOptions: ExhibitionCreateOptions = {},
   ): Promise<Exhibition> {
     createOptions = this.fillCreateOptionsWithDefaults(createOptions);
-    this.validateCreateOptions(createOptions);
+    this.validateCreateOptions(createOptions, map);
     const core = new DefaultCore(element, map);
     const exhibition = new Exhibition(core, options);
     await this.applyCreateOptions(exhibition, createOptions);
@@ -242,7 +240,16 @@ export class Exhibition extends AbstractWraplet<
   /**
    * Validate create options.
    */
-  private static validateCreateOptions(createOptions: ExhibitionCreateOptions) {
+  private static validateCreateOptions(
+    createOptions: ExhibitionCreateOptions,
+    map: typeof ExhibitionMap,
+  ) {
+    if (createOptions.init && map.editors.selector === undefined) {
+      throw new Error(
+        "Cannot initialize exhibition with undefined editors.selector",
+      );
+    }
+
     if (!createOptions.init && createOptions.updatePreview) {
       throw new Error(
         "Cannot update preview without initializing exhibitions first",

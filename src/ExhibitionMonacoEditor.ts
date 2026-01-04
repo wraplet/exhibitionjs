@@ -1,12 +1,11 @@
 import {
   AbstractWraplet,
   Core,
-  createDefaultDestroyWrapper,
-  createDefaultInitializeWrapper,
+  createDefaultDestroyCallback,
+  createDefaultInitializeCallback,
+  customizeDefaultWrapletApi,
   DefaultCore,
-  RichWrapletApi,
   Status,
-  WrapletApiFactoryArgs,
 } from "wraplet";
 import {
   ElementAttributeStorage,
@@ -158,23 +157,24 @@ export class ExhibitionMonacoEditor
       { ...defaultOptions, ...options },
       validators,
     );
-  }
 
-  protected createWrapletApi(
-    args: WrapletApiFactoryArgs<HTMLElement, {}>,
-  ): RichWrapletApi<HTMLElement> {
-    args.status = this.status;
-    const api = super.createWrapletApi(args);
-    api.initialize = this.initialize.bind(this);
-    api.destroy = this.destroy.bind(this);
-    return api;
+    this.wraplet = customizeDefaultWrapletApi(
+      {
+        status: this.status,
+        initialize: this.initialize.bind(this),
+        destroy: this.destroy.bind(this),
+      },
+      this.wraplet,
+    );
   }
 
   public async initialize() {
-    return createDefaultInitializeWrapper(
-      this.status,
-      this.core,
-      this.wraplet.destroy,
+    return createDefaultInitializeCallback(
+      {
+        core: this.core,
+        destroyCallback: this.destroy,
+        status: this.status,
+      },
       async () => {
         if (this.status.isInitialized) {
           throw new Error("ExhibitionMonacoEditor is already initialized");
@@ -389,11 +389,13 @@ export class ExhibitionMonacoEditor
   }
 
   public async destroy() {
-    return createDefaultDestroyWrapper(
-      this.status,
-      this.core,
-      this,
-      [],
+    return createDefaultDestroyCallback(
+      {
+        core: this.core,
+        wraplet: this,
+        destroyListeners: this.destroyListeners,
+        status: this.status,
+      },
       async () => {
         this.editor?.dispose();
       },
