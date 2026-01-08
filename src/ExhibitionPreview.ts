@@ -40,6 +40,12 @@ export class ExhibitionPreview extends AbstractWraplet<HTMLIFrameElement> {
     );
   }
 
+  public removeDocumentAlterer(alterer: DocumentAlterer): void {
+    this.alterers = this.alterers.filter(
+      (altererData) => altererData.callback !== alterer,
+    );
+  }
+
   public async update(): Promise<void> {
     const doc = document.implementation.createHTMLDocument();
     this.alterers.sort((a, b) => b.priority - a.priority);

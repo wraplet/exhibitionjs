@@ -118,18 +118,23 @@ export class Exhibition extends AbstractWraplet<
         }
 
         for (const editor of this.children.editors) {
-          this.addPreviewAlterer(
-            editor.getDocumentAlterer(),
-            editor.getPriority(),
-          );
           if (
-            editor.wraplet.status.isInitialized ||
-            editor.wraplet.status.isGettingInitialized
+            !editor.wraplet.status.isInitialized &&
+            !editor.wraplet.status.isGettingInitialized
           ) {
-            continue;
+            await editor.wraplet.initialize();
           }
 
-          await editor.wraplet.initialize();
+          if (
+            !this.children.preview.hasDocumentAlterer(
+              editor.getDocumentAlterer(),
+            )
+          ) {
+            this.addPreviewAlterer(
+              editor.getDocumentAlterer(),
+              editor.getPriority(),
+            );
+          }
         }
 
         const updaterElements = this.node.querySelectorAll(
@@ -150,6 +155,22 @@ export class Exhibition extends AbstractWraplet<
    */
   public addEditor(editor: DocumentAltererProviderWraplet): void {
     this.children.editors.add(editor);
+    this.children.preview.addDocumentAlterer(editor.getDocumentAlterer());
+  }
+
+  /**
+   * Removes DocumentAltererProviderWraplet instance from the list of editors.
+   */
+  public removeEditor(editor: DocumentAltererProviderWraplet): void {
+    this.children.editors.delete(editor);
+    this.children.preview.removeDocumentAlterer(editor.getDocumentAlterer());
+  }
+
+  /**
+   * Checks if the given editor is present in the list of editors.
+   */
+  public hasEditor(editor: DocumentAltererProviderWraplet): boolean {
+    return this.children.editors.has(editor);
   }
 
   /**
