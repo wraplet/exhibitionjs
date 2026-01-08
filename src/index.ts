@@ -7,6 +7,7 @@ export { ExhibitionMonacoEditor } from "./ExhibitionMonacoEditor";
 export type {
   ExhibitionMonacoEditorOptions,
   EditorCreator,
+  MonacoInstance,
 } from "./ExhibitionMonacoEditor";
 
 export type { DocumentAltererProviderWraplet } from "./types/DocumentAltererProviderWraplet";

@@ -105,6 +105,10 @@ export class Exhibition extends AbstractWraplet<
     );
   }
 
+  protected supportedNodeTypes(): readonly Constructable<HTMLElement>[] {
+    return super.supportedNodeTypesGuard([HTMLElement]);
+  }
+
   public async initialize() {
     return createDefaultInitializeCallback(
       {
@@ -195,19 +199,19 @@ export class Exhibition extends AbstractWraplet<
    * Create multiple Exhibitions.
    *
    * @param node Node to create Exhibitions on.
-   * @param attribute Attribute to use for Exhibition instances.
    * @param map Map of dependencies for each Exhibition instance.
    * @param options Options for Exhibition instances.
    * @param createOptions Options related to the creation process of the Exhibitions.
+   * @param attribute Attribute to use for Exhibition instances.
    *
    * @returns Array of Exhibition instances.
    */
   public static async createMultiple(
     node: ParentNode,
-    attribute: string = exhibitionDefaultAttribute,
     map: typeof ExhibitionMap,
     options: ExhibitionOptions = {},
     createOptions: ExhibitionCreateOptions = {},
+    attribute: string = exhibitionDefaultAttribute,
   ): Promise<Exhibition[]> {
     createOptions = this.fillCreateOptionsWithDefaults(createOptions);
     this.validateCreateOptions(createOptions, map);

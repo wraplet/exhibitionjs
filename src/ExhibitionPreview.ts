@@ -1,4 +1,4 @@
-import { AbstractWraplet } from "wraplet";
+import { AbstractWraplet, Constructable } from "wraplet";
 import { DocumentAlterer } from "./types/DocumentAlterer";
 
 type AltererData = {
@@ -9,6 +9,10 @@ type AltererData = {
 export class ExhibitionPreview extends AbstractWraplet<HTMLIFrameElement> {
   private alterers: AltererData[] = [];
   private currentBlobUrl: string | null = null;
+
+  protected supportedNodeTypes(): readonly Constructable<HTMLIFrameElement>[] {
+    return super.supportedNodeTypesGuard([HTMLIFrameElement]);
+  }
 
   /**
    * Adds a DocumentAlterer to the preview.

@@ -1,6 +1,6 @@
 {
   "name": "exhibitionjs",
-  "version": "0.23.0",
+  "version": "0.24.0",
   "description": "Library for showcasing your js/ts code snippets.",
   "main": "dist/index.js",
   "type": "module",
@@ -33,10 +33,10 @@
   "author": "Łukasz Zaroda",
   "license": "MIT",
   "dependencies": {
-    "wraplet": "^0.44.0"
+    "wraplet": "^0.45.0"
   },
   "peerDependencies": {
-    "monaco-editor": "^0.54.0"
+    "monaco-editor": "^0.55.1"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.2",

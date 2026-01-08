@@ -1,5 +1,6 @@
 import {
   AbstractWraplet,
+  Constructable,
   Core,
   createDefaultDestroyCallback,
   createDefaultInitializeCallback,
@@ -166,6 +167,10 @@ export class ExhibitionMonacoEditor
       },
       this.wraplet,
     );
+  }
+
+  protected supportedNodeTypes(): readonly Constructable<HTMLElement>[] {
+    return super.supportedNodeTypesGuard([HTMLElement]);
   }
 
   public async initialize() {
