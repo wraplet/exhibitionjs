@@ -15,24 +15,11 @@ export const typeMap = {
   },
 } as const;
 
-export type LanguagesWithSingleTags = {
-  [K in ValueTypes]: (typeof typeMap)[K]["tag"] extends undefined
-    ? never
-    : (typeof typeMap)[K]["languages"][number];
-}[ValueTypes];
-
 export type TypeFromLanguage<L extends MonacoEditorLanguages> = {
   [K in ValueTypes]: L extends (typeof typeMap)[K]["languages"][number]
     ? K
     : never;
 }[ValueTypes];
-
-export type TagFromLanguage<L extends MonacoEditorLanguages> =
-  (typeof typeMap)[{
-    [K in ValueTypes]: L extends (typeof typeMap)[K]["languages"][number]
-      ? K
-      : never;
-  }[ValueTypes]]["tag"];
 
 export type ValueTypes = keyof typeof typeMap;
 
@@ -55,12 +42,6 @@ export function getTagFromType<T extends ValueTypes>(
   type: T,
 ): (typeof typeMap)[T]["tag"] {
   return typeMap[type].tag;
-}
-
-export function isSingleTagValue(
-  item: Partial<PreviewValue> & { type: ValueTypes },
-): item is Extract<PreviewValue, IsSingleTag> {
-  return Boolean(getTagFromType(item.type));
 }
 
 export function isSingleTagType(

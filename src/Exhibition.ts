@@ -8,7 +8,10 @@ import {
   Status,
   WrapletChildrenMap,
 } from "wraplet";
-import { ExhibitionPreview } from "./ExhibitionPreview";
+import {
+  ExhibitionPreview,
+  ExhibitionPreviewOptions,
+} from "./ExhibitionPreview";
 import {
   ExhibitionMonacoEditor,
   ExhibitionMonacoEditorOptions,
@@ -21,6 +24,7 @@ import {
   StorageWrapper,
 } from "wraplet/storage";
 import { DocumentAlterer } from "./types/DocumentAlterer";
+import { PreviewWraplet } from "./types/PreviewWraplet";
 
 export type ExhibitionOptions = {
   /**
@@ -29,15 +33,41 @@ export type ExhibitionOptions = {
   updaterSelector?: string;
 };
 
-export type ExhibitionCreateOptions = {
+export type ExhibitionInitOptions = {
   init?: boolean;
   updatePreview?: boolean;
 };
 
-export type ExhibitionMapOptions = {
+export type PreviewOptionsWrapper<
+  O,
+  IS_REQUIRED extends boolean = false,
+> = IS_REQUIRED extends true
+  ? {
+      previewOptions: O;
+    }
+  : { previewOptions?: O };
+
+export type EditorsOptionsWrapper<
+  O,
+  IS_REQUIRED extends boolean = false,
+> = IS_REQUIRED extends true
+  ? {
+      editorsOptions: O;
+    }
+  : { editorsOptions?: O };
+
+export type ExhibitionMapOptions<
+  EO extends EditorsOptionsWrapper<unknown, boolean> | undefined =
+    EditorsOptionsWrapper<ExhibitionMonacoEditorOptions, true>,
+  PO extends PreviewOptionsWrapper<unknown, boolean> | undefined =
+    PreviewOptionsWrapper<ExhibitionPreviewOptions>,
+> = {
   Class?: Constructable<DocumentAltererProviderWraplet>;
   selectEditors?: boolean;
-};
+} & (EO extends undefined
+  ? EditorsOptionsWrapper<ExhibitionMonacoEditorOptions, true>
+  : EO) &
+  (PO extends undefined ? PreviewOptionsWrapper<ExhibitionPreviewOptions> : PO);
 
 const ExhibitionMap = {
   editors: {
@@ -52,7 +82,8 @@ const ExhibitionMap = {
     selector: "iframe[data-js-exhibition-preview]",
     multiple: false,
     required: true,
-    Class: ExhibitionPreview,
+    Class: ExhibitionPreview as Constructable<PreviewWraplet>,
+    args: [] as unknown[],
   },
 } satisfies WrapletChildrenMap;
 
@@ -180,14 +211,14 @@ export class Exhibition extends AbstractWraplet<
   /**
    * Adds a simple DocumentAlterer to the preview.
    */
-  public addPreviewAlterer(
+  private addPreviewAlterer(
     alterer: DocumentAlterer,
     priority: number = 0,
   ): void {
     this.children.preview.addDocumentAlterer(alterer, priority);
   }
 
-  public getPreview(): ExhibitionPreview {
+  public getPreview(): PreviewWraplet {
     return this.children.preview;
   }
 
@@ -201,20 +232,22 @@ export class Exhibition extends AbstractWraplet<
    * @param node Node to create Exhibitions on.
    * @param map Map of dependencies for each Exhibition instance.
    * @param options Options for Exhibition instances.
-   * @param createOptions Options related to the creation process of the Exhibitions.
+   * @param initOptions Options related to the creation process of the Exhibitions.
    * @param attribute Attribute to use for Exhibition instances.
    *
    * @returns Array of Exhibition instances.
    */
-  public static async createMultiple(
+  public static async createMultiple<
+    M extends typeof ExhibitionMap = typeof ExhibitionMap,
+  >(
     node: ParentNode,
-    map: typeof ExhibitionMap,
+    map: M,
     options: ExhibitionOptions = {},
-    createOptions: ExhibitionCreateOptions = {},
+    initOptions: ExhibitionInitOptions = {},
     attribute: string = exhibitionDefaultAttribute,
   ): Promise<Exhibition[]> {
-    createOptions = this.fillCreateOptionsWithDefaults(createOptions);
-    this.validateCreateOptions(createOptions, map);
+    initOptions = this.fillCreateOptionsWithDefaults(initOptions);
+    this.validateInitOptions(initOptions, map);
 
     const exhibitions = this.createWraplets<HTMLElement, Exhibition>(
       node,
@@ -224,7 +257,7 @@ export class Exhibition extends AbstractWraplet<
     );
 
     for (const exhibition of exhibitions) {
-      await this.applyCreateOptions(exhibition, createOptions);
+      await this.applyCreateOptions(exhibition, initOptions);
     }
 
     return exhibitions;
@@ -236,24 +269,29 @@ export class Exhibition extends AbstractWraplet<
    * @param element Element to wrap.
    * @param map Map of dependencies for the Exhibition instance.
    * @param options Options for the Exhibition instance.
-   * @param createOptions Options related to the creation process of the Exhibitions.
+   * @param initOptions Options related to the creation process of the Exhibitions.
    */
-  public static async create(
+  public static async create<
+    M extends typeof ExhibitionMap = typeof ExhibitionMap,
+  >(
     element: HTMLElement,
-    map: typeof ExhibitionMap,
+    map: M,
     options: ExhibitionOptions = {},
-    createOptions: ExhibitionCreateOptions = {},
+    initOptions: ExhibitionInitOptions = {},
   ): Promise<Exhibition> {
-    createOptions = this.fillCreateOptionsWithDefaults(createOptions);
-    this.validateCreateOptions(createOptions, map);
-    const core = new DefaultCore(element, map);
+    initOptions = this.fillCreateOptionsWithDefaults(initOptions);
+    this.validateInitOptions(initOptions, map);
+    const core = new DefaultCore<HTMLElement, typeof ExhibitionMap>(
+      element,
+      map,
+    );
     const exhibition = new Exhibition(core, options);
-    await this.applyCreateOptions(exhibition, createOptions);
+    await this.applyCreateOptions(exhibition, initOptions);
     return exhibition;
   }
 
   private static fillCreateOptionsWithDefaults(
-    createOptions: ExhibitionCreateOptions,
+    createOptions: ExhibitionInitOptions,
   ) {
     return {
       init: true,
@@ -265,17 +303,17 @@ export class Exhibition extends AbstractWraplet<
   /**
    * Validate create options.
    */
-  private static validateCreateOptions(
-    createOptions: ExhibitionCreateOptions,
+  private static validateInitOptions(
+    initOptions: ExhibitionInitOptions,
     map: typeof ExhibitionMap,
   ) {
-    if (createOptions.init && map.editors.selector === undefined) {
+    if (initOptions.init && map.editors.selector === undefined) {
       throw new Error(
         "Cannot initialize exhibition with undefined editors.selector",
       );
     }
 
-    if (!createOptions.init && createOptions.updatePreview) {
+    if (!initOptions.init && initOptions.updatePreview) {
       throw new Error(
         "Cannot update preview without initializing exhibitions first",
       );
@@ -287,7 +325,7 @@ export class Exhibition extends AbstractWraplet<
    */
   private static async applyCreateOptions(
     exhibition: Exhibition,
-    options: ExhibitionCreateOptions = {},
+    options: ExhibitionInitOptions = {},
   ): Promise<void> {
     if (!options.init && options.updatePreview) {
       throw new Error(
@@ -305,49 +343,58 @@ export class Exhibition extends AbstractWraplet<
   }
 
   /**
-   * Returns a dependency map with editors being instances of ExhibitionMonacoEditor.
-   *
-   * @param exhibitionMonacoEditorOptions
-   *   MonacoEditorOptions to pass to the ExhibitionMonacoEditor.
-   * @param options
-   *   Map options.
-   */
-  public static getMapWithMonacoEditor(
-    exhibitionMonacoEditorOptions: ExhibitionMonacoEditorOptions,
-    options: Omit<ExhibitionMapOptions, "Class"> = {},
-  ): typeof ExhibitionMap {
-    const opts: ExhibitionMapOptions = {
-      ...options,
-      Class: ExhibitionMonacoEditor,
-    };
-    const map = this.getMap(opts);
-
-    map["editors"]["args"] = [exhibitionMonacoEditorOptions];
-
-    return map;
-  }
-
-  /**
    * Returns a generic dependecy map with an undefined editor class that has to be provided through
    * the options.
    *
-   * @param options
+   * @param mapOptions
    *   Map options.
    */
-  public static getMap(options: ExhibitionMapOptions): typeof ExhibitionMap {
+  public static getMap<
+    O extends ExhibitionMapOptions<
+      EditorsOptionsWrapper<unknown, boolean>,
+      PreviewOptionsWrapper<unknown, boolean>
+    > = ExhibitionMapOptions,
+  >(mapOptions?: NoInfer<O>): typeof ExhibitionMap {
     const map: typeof ExhibitionMap = ExhibitionMap;
-    const allOptions: Required<ExhibitionMapOptions> = {
+    const allOptions: Required<
+      ExhibitionMapOptions<
+        EditorsOptionsWrapper<unknown, boolean>,
+        PreviewOptionsWrapper<unknown, boolean>
+      >
+    > = {
       ...{
         selectEditors: true,
-        Class: ExhibitionMonacoEditor,
+        Class: undefined as any,
+        editorsOptions: {},
+        previewOptions: {},
       },
-      ...options,
+      ...mapOptions,
     };
 
-    map["editors"]["Class"] = allOptions.Class;
+    if (allOptions.Class) {
+      map["editors"]["Class"] = allOptions.Class;
+    }
+
+    if (
+      map["editors"]["Class"] instanceof ExhibitionMonacoEditor &&
+      allOptions.editorsOptions &&
+      !(allOptions.editorsOptions as { monaco?: unknown })["monaco"]
+    ) {
+      throw new Error(
+        "When using ExhibitionMonacoEditor as editors class, you must provide the 'monaco' option in the editors options.",
+      );
+    }
 
     if (!allOptions.selectEditors) {
       map["editors"]["selector"] = undefined;
+    }
+
+    if (allOptions.previewOptions) {
+      map["preview"]["args"].push(allOptions.previewOptions);
+    }
+
+    if (allOptions.editorsOptions) {
+      map["editors"]["args"].push(allOptions.editorsOptions);
     }
 
     return map;

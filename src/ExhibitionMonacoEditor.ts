@@ -201,7 +201,7 @@ export class ExhibitionMonacoEditor
 
         await this.validateOptions();
 
-        this.monaco = await this.options.get("monaco");
+        this.monaco = await this.getMonacoInstance();
 
         const editorCreator: EditorCreator =
           (await this.options.get("monacoEditorCreator")) ||
@@ -223,6 +223,12 @@ export class ExhibitionMonacoEditor
 
   public getPriority(): number {
     return this.priority;
+  }
+
+  private async getMonacoInstance(): Promise<MonacoInstance> {
+    const monaco = await this.options.get("monaco");
+    if (!monaco) throw new Error("Monaco instance is not available");
+    return monaco;
   }
 
   /**

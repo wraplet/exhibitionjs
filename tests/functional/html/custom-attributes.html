@@ -33,9 +33,11 @@
   require(['vs/editor/editor.main'], async function () {
     const ExhibitionModule = await import('/dist/index.js');
     const Exhibition = ExhibitionModule.Exhibition;
-    await Exhibition.createMultiple(document.body, Exhibition.getMapWithMonacoEditor({
-      monaco: monaco,
-      monacoEditorOptions: { value: '', minimap: { enabled: false }, scrollBeyondLastLine: false }
+    await Exhibition.createMultiple(document.body, Exhibition.getMap({
+      editorsOptions: {
+        monaco: monaco,
+        monacoEditorOptions: { value: '', minimap: { enabled: false }, scrollBeyondLastLine: false }
+      },
     }));
   });
 </script>

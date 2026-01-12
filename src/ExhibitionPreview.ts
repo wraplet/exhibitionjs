@@ -1,14 +1,69 @@
-import { AbstractWraplet, Constructable } from "wraplet";
+import { AbstractWraplet, Constructable, Core } from "wraplet";
 import { DocumentAlterer } from "./types/DocumentAlterer";
+import {
+  ElementAttributeStorage,
+  KeyValueStorage,
+  StorageValidators,
+  StorageWrapper,
+} from "wraplet/storage";
+import { PreviewWraplet } from "./types/PreviewWraplet";
 
 type AltererData = {
   callback: DocumentAlterer;
   priority: number;
 };
 
-export class ExhibitionPreview extends AbstractWraplet<HTMLIFrameElement> {
+export type ExhibitionPreviewOptions = {
+  updateHeight?: boolean;
+  updateHeightCallback?: (preview: ExhibitionPreview) => Promise<void>;
+};
+
+export class ExhibitionPreview
+  extends AbstractWraplet<HTMLIFrameElement>
+  implements PreviewWraplet
+{
   private alterers: AltererData[] = [];
   private currentBlobUrl: string | null = null;
+
+  private options: KeyValueStorage<Required<ExhibitionPreviewOptions>>;
+
+  constructor(
+    core: Core<HTMLIFrameElement>,
+    options: ExhibitionPreviewOptions = {},
+    optionsStorage?: KeyValueStorage<Partial<ExhibitionPreviewOptions>>,
+  ) {
+    super(core);
+
+    const validators: StorageValidators<ExhibitionPreviewOptions> = {
+      updateHeight: (data: unknown) => typeof data === "boolean",
+      updateHeightCallback: (data: unknown) => typeof data === "function",
+    };
+
+    const defaultOptions: Required<ExhibitionPreviewOptions> = {
+      updateHeight: true,
+      updateHeightCallback: async (preview) => {
+        setTimeout(() => {
+          preview.updateHeight();
+        }, 100);
+      },
+    };
+
+    const optsStorage: KeyValueStorage<Partial<ExhibitionPreviewOptions>> =
+      optionsStorage ||
+      new ElementAttributeStorage<Partial<ExhibitionPreviewOptions>, true>(
+        true,
+        core.node,
+        "data-js-options",
+        {},
+        {},
+      );
+
+    this.options = new StorageWrapper<Required<ExhibitionPreviewOptions>>(
+      optsStorage,
+      { ...defaultOptions, ...options },
+      validators,
+    );
+  }
 
   protected supportedNodeTypes(): readonly Constructable<HTMLIFrameElement>[] {
     return super.supportedNodeTypesGuard([HTMLIFrameElement]);
@@ -67,12 +122,12 @@ export class ExhibitionPreview extends AbstractWraplet<HTMLIFrameElement> {
     this.currentBlobUrl = URL.createObjectURL(blob);
     this.node.src = this.currentBlobUrl;
 
-    this.node.onload = () => {
-      // Wait for the document to render before calculating the height.
-      // @todo This should be configurable.
-      setTimeout(() => {
-        this.updateHeight();
-      }, 100);
+    this.node.onload = async () => {
+      if (!(await this.options.get("updateHeight"))) {
+        await (
+          await this.options.get("updateHeightCallback")
+        )(this);
+      }
       this.node.onload = null;
     };
   }
