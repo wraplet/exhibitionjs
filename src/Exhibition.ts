@@ -376,12 +376,13 @@ export class Exhibition extends AbstractWraplet<
     }
 
     if (
+      allOptions.selectEditors &&
       map["editors"]["Class"] instanceof ExhibitionMonacoEditor &&
-      allOptions.editorsOptions &&
-      !(allOptions.editorsOptions as { monaco?: unknown })["monaco"]
+      (!allOptions.editorsOptions ||
+        !(allOptions.editorsOptions as { monaco?: unknown })["monaco"])
     ) {
       throw new Error(
-        "When using ExhibitionMonacoEditor as editors class, you must provide the 'monaco' option in the editors options.",
+        "When selecting ExhibitionMonacoEditor instances, you must provide the 'monaco' option in the editors options. To avoid this error, disable 'selectEditors' or provide the 'monaco' option.",
       );
     }
 
