@@ -25,6 +25,7 @@ import {
 } from "wraplet/storage";
 import { DocumentAlterer } from "./types/DocumentAlterer";
 import { PreviewWraplet } from "./types/PreviewWraplet";
+import { AllOptional } from "./types/utils";
 
 export type ExhibitionOptions = {
   /**
@@ -41,33 +42,45 @@ export type ExhibitionInitOptions = {
 export type PreviewOptionsWrapper<
   O,
   IS_REQUIRED extends boolean = false,
-> = IS_REQUIRED extends true
+> = (IS_REQUIRED extends true
   ? {
       previewOptions: O;
     }
-  : { previewOptions?: O };
+  : { previewOptions?: O }) & {
+  previewClass?: Constructable<PreviewWraplet>;
+};
 
 export type EditorsOptionsWrapper<
   O,
   IS_REQUIRED extends boolean = false,
-> = IS_REQUIRED extends true
+> = (IS_REQUIRED extends true
   ? {
       editorsOptions: O;
     }
-  : { editorsOptions?: O };
+  : { editorsOptions?: O }) & {
+  editorsClass?: Constructable<DocumentAltererProviderWraplet>;
+};
+
+export type ExhibitionMapBaseOptions = {
+  selectEditors?: boolean;
+};
 
 export type ExhibitionMapOptions<
-  EO extends EditorsOptionsWrapper<unknown, boolean> | undefined =
+  EO extends EditorsOptionsWrapper<unknown, boolean> | "deferred" | undefined =
     EditorsOptionsWrapper<ExhibitionMonacoEditorOptions, true>,
-  PO extends PreviewOptionsWrapper<unknown, boolean> | undefined =
+  PO extends PreviewOptionsWrapper<unknown, boolean> | "deferred" | undefined =
     PreviewOptionsWrapper<ExhibitionPreviewOptions>,
-> = {
-  Class?: Constructable<DocumentAltererProviderWraplet>;
-  selectEditors?: boolean;
-} & (EO extends undefined
-  ? EditorsOptionsWrapper<ExhibitionMonacoEditorOptions, true>
-  : EO) &
-  (PO extends undefined ? PreviewOptionsWrapper<ExhibitionPreviewOptions> : PO);
+> = ExhibitionMapBaseOptions &
+  (EO extends "deferred"
+    ? {}
+    : EO extends undefined
+      ? EditorsOptionsWrapper<ExhibitionMonacoEditorOptions, true>
+      : EO) &
+  (PO extends "deferred"
+    ? {}
+    : PO extends undefined
+      ? PreviewOptionsWrapper<ExhibitionPreviewOptions>
+      : PO);
 
 const ExhibitionMap = {
   editors: {
@@ -345,34 +358,45 @@ export class Exhibition extends AbstractWraplet<
   /**
    * Returns a generic dependecy map with an undefined editor class that has to be provided through
    * the options.
-   *
-   * @param mapOptions
-   *   Map options.
    */
   public static getMap<
-    O extends ExhibitionMapOptions<
-      EditorsOptionsWrapper<unknown, boolean>,
-      PreviewOptionsWrapper<unknown, boolean>
-    > = ExhibitionMapOptions,
-  >(mapOptions?: NoInfer<O>): typeof ExhibitionMap {
+    EO extends
+      | EditorsOptionsWrapper<unknown, boolean>
+      | "deferred"
+      | undefined = undefined,
+    PO extends
+      | PreviewOptionsWrapper<unknown, boolean>
+      | "deferred"
+      | undefined = undefined,
+  >(
+    ...args: AllOptional<ExhibitionMapOptions<EO, PO>> extends true
+      ? [mapOptions?: NoInfer<ExhibitionMapOptions<EO, PO>>]
+      : [mapOptions: NoInfer<ExhibitionMapOptions<EO, PO>>]
+  ): typeof ExhibitionMap {
+    const mapOptions = args[0];
     const map: typeof ExhibitionMap = ExhibitionMap;
     const allOptions: Required<
       ExhibitionMapOptions<
-        EditorsOptionsWrapper<unknown, boolean>,
-        PreviewOptionsWrapper<unknown, boolean>
+        EditorsOptionsWrapper<unknown, boolean> | undefined,
+        PreviewOptionsWrapper<unknown, boolean> | undefined
       >
     > = {
       ...{
         selectEditors: true,
-        Class: undefined as any,
+        editorsClass: undefined as any,
+        previewClass: undefined as any,
         editorsOptions: {},
         previewOptions: {},
       },
       ...mapOptions,
     };
 
-    if (allOptions.Class) {
-      map["editors"]["Class"] = allOptions.Class;
+    if (allOptions.editorsClass) {
+      map["editors"]["Class"] = allOptions.editorsClass;
+    }
+
+    if (allOptions.previewClass) {
+      map["preview"]["Class"] = allOptions.previewClass;
     }
 
     if (

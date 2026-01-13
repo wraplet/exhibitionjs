@@ -1,6 +1,5 @@
 import {
   Exhibition,
-  ExhibitionMapOptions,
   EditorsOptionsWrapper,
   PreviewOptionsWrapper,
 } from "../../src/Exhibition";
@@ -79,10 +78,10 @@ describe("Exhibition", () => {
     expect(map.editors.Class).toBe(ExhibitionMonacoEditor);
   });
 
-  it("should override 'Class' based on the provided option when producing map", async () => {
+  it("should override 'editorsClass' based on the provided option when producing map", async () => {
     const mock = {};
     const map = Exhibition.getMap<any>({
-      Class: mock as any,
+      editorsClass: mock as any,
     });
     expect(map.editors.Class).toBe(mock);
   });
@@ -95,11 +94,6 @@ describe("Exhibition", () => {
       option2: string;
     };
 
-    type CustomOptions = ExhibitionMapOptions<
-      EditorsOptionsWrapper<CustomEditorOptions>,
-      PreviewOptionsWrapper<CustomPreviewOptions>
-    >;
-
     const editorsOptions: CustomEditorOptions = {
       option2: "options2value",
     };
@@ -108,11 +102,32 @@ describe("Exhibition", () => {
       option1: "options1value",
     };
 
-    const map = Exhibition.getMap<CustomOptions>({
-      Class: {} as any,
+    // @ts-expect-error When "undefined" is provided, the default types are used. Default editors
+    // options require "monaco" property.
+    Exhibition.getMap();
+
+    // editors options are deferred, so the requirement of the "monaco" property should
+    // not be enforced.
+    Exhibition.getMap<"deferred">();
+
+    // Custom editors options are provided.
+    Exhibition.getMap<EditorsOptionsWrapper<CustomEditorOptions>>({
       editorsOptions: editorsOptions,
-      previewOptions: previewOptions,
     });
+
+    // @ts-expect-error When "undefined" is provided, the default types are used.
+    // This should cause an error as default editors options require "monaco" property.
+    Exhibition.getMap<undefined>();
+
+    // Testing if default options are applied correctly.
+    const map = Exhibition.getMap<
+      EditorsOptionsWrapper<CustomEditorOptions>,
+      PreviewOptionsWrapper<CustomPreviewOptions>
+    >({
+      previewOptions: previewOptions,
+      editorsOptions: editorsOptions,
+    });
+
     expect(map.preview.args).toContain(previewOptions);
     expect(map.editors.args).toContain(editorsOptions);
   });
