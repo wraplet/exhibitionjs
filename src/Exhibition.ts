@@ -39,31 +39,46 @@ export type ExhibitionInitOptions = {
   updatePreview?: boolean;
 };
 
+type PreviewOptionsBaseWrapper = {
+  Class?: Constructable<PreviewWraplet>;
+};
+
 export type PreviewOptionsWrapper<
   O,
   IS_REQUIRED extends boolean = false,
-> = (IS_REQUIRED extends true
+> = IS_REQUIRED extends true
   ? {
-      previewOptions: O;
+      preview: {
+        options: O;
+      } & PreviewOptionsBaseWrapper;
     }
-  : { previewOptions?: O }) & {
-  previewClass?: Constructable<PreviewWraplet>;
+  : {
+      preview?: {
+        options?: O;
+      } & PreviewOptionsBaseWrapper;
+    };
+
+type EditorsOptionsBaseWrapper = {
+  Class?: Constructable<DocumentAltererProviderWraplet>;
+  disableSelector?: boolean;
 };
 
 export type EditorsOptionsWrapper<
   O,
   IS_REQUIRED extends boolean = false,
-> = (IS_REQUIRED extends true
+> = IS_REQUIRED extends true
   ? {
-      editorsOptions: O;
+      editors: {
+        options: O;
+      } & EditorsOptionsBaseWrapper;
     }
-  : { editorsOptions?: O }) & {
-  editorsClass?: Constructable<DocumentAltererProviderWraplet>;
-};
+  : {
+      editors?: {
+        options?: O;
+      } & EditorsOptionsBaseWrapper;
+    };
 
-export type ExhibitionMapBaseOptions = {
-  selectEditors?: boolean;
-};
+export type ExhibitionMapBaseOptions = {};
 
 export type ExhibitionMapOptions<
   EO extends EditorsOptionsWrapper<unknown, boolean> | "deferred" | undefined =
@@ -382,44 +397,41 @@ export class Exhibition extends AbstractWraplet<
       >
     > = {
       ...{
-        selectEditors: true,
-        editorsClass: undefined as any,
-        previewClass: undefined as any,
-        editorsOptions: {},
-        previewOptions: {},
+        preview: {},
+        editors: {},
       },
       ...mapOptions,
     };
 
-    if (allOptions.editorsClass) {
-      map["editors"]["Class"] = allOptions.editorsClass;
+    if (allOptions.editors.Class) {
+      map["editors"]["Class"] = allOptions.editors.Class;
     }
 
-    if (allOptions.previewClass) {
-      map["preview"]["Class"] = allOptions.previewClass;
+    if (allOptions.preview.Class) {
+      map["preview"]["Class"] = allOptions.preview.Class;
     }
 
     if (
-      allOptions.selectEditors &&
+      allOptions.editors.disableSelector &&
       map["editors"]["Class"] instanceof ExhibitionMonacoEditor &&
-      (!allOptions.editorsOptions ||
-        !(allOptions.editorsOptions as { monaco?: unknown })["monaco"])
+      (!allOptions.editors.options ||
+        !(allOptions.editors.options as { monaco?: unknown })["monaco"])
     ) {
       throw new Error(
-        "When selecting ExhibitionMonacoEditor instances, you must provide the 'monaco' option in the editors options. To avoid this error, disable 'selectEditors' or provide the 'monaco' option.",
+        "When selecting ExhibitionMonacoEditor instances, you must provide the 'monaco' option in the editors options. To avoid this error, set 'disableSelector' or provide the 'monaco' option.",
       );
     }
 
-    if (!allOptions.selectEditors) {
+    if (allOptions.editors.disableSelector) {
       map["editors"]["selector"] = undefined;
     }
 
-    if (allOptions.previewOptions) {
-      map["preview"]["args"].push(allOptions.previewOptions);
+    if (allOptions.preview.options) {
+      map["preview"]["args"].push(allOptions.preview.options);
     }
 
-    if (allOptions.editorsOptions) {
-      map["editors"]["args"].push(allOptions.editorsOptions);
+    if (allOptions.editors.options) {
+      map["editors"]["args"].push(allOptions.editors.options);
     }
 
     return map;

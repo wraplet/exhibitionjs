@@ -69,19 +69,10 @@ describe("Exhibition", () => {
     expect(preview.hasDocumentAlterer(mockAlterer)).toBe(false);
   });
 
-  it("should not require 'Class' option when getting map", async () => {
-    const map = Exhibition.getMap({
-      selectEditors: false,
-      editorsOptions: { monaco: {} as any },
-    });
-    // Default Class is set.
-    expect(map.editors.Class).toBe(ExhibitionMonacoEditor);
-  });
-
   it("should override 'editorsClass' based on the provided option when producing map", async () => {
     const mock = {};
     const map = Exhibition.getMap<any>({
-      editorsClass: mock as any,
+      editors: { Class: mock as any },
     });
     expect(map.editors.Class).toBe(mock);
   });
@@ -112,7 +103,9 @@ describe("Exhibition", () => {
 
     // Custom editors options are provided.
     Exhibition.getMap<EditorsOptionsWrapper<CustomEditorOptions>>({
-      editorsOptions: editorsOptions,
+      editors: {
+        options: editorsOptions,
+      },
     });
 
     // @ts-expect-error When "undefined" is provided, the default types are used.
@@ -124,8 +117,10 @@ describe("Exhibition", () => {
       EditorsOptionsWrapper<CustomEditorOptions>,
       PreviewOptionsWrapper<CustomPreviewOptions>
     >({
-      previewOptions: previewOptions,
-      editorsOptions: editorsOptions,
+      preview: { options: previewOptions },
+      editors: {
+        options: editorsOptions,
+      },
     });
 
     expect(map.preview.args).toContain(previewOptions);

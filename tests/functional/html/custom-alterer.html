@@ -28,9 +28,11 @@
         const ExhibitionModule = await import('/dist/index.js');
         const Exhibition = ExhibitionModule.Exhibition;
         const exhibitions = await Exhibition.createMultiple(document.body, Exhibition.getMap({
-            editorsOptions: {
-                monaco: monaco,
-                monacoEditorOptions: { value: '', minimap: { enabled: false }, scrollBeyondLastLine: false }
+            editors: {
+                options: {
+                    monaco: monaco,
+                    monacoEditorOptions: { value: '', minimap: { enabled: false }, scrollBeyondLastLine: false }
+                },
             },
         }), { init: false, updatePreview: false });
 
