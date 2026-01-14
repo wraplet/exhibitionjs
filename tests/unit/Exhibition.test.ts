@@ -12,7 +12,6 @@ import {
 import { ExhibitionPreview } from "../../src/ExhibitionPreview";
 import { DocumentAltererProviderWraplet } from "../../src/types/DocumentAltererProviderWraplet";
 import { DocumentAlterer } from "../../src/types/DocumentAlterer";
-import { ExhibitionMonacoEditor } from "../../src";
 
 describe("Exhibition", () => {
   it("should be able to add and remove editors", () => {

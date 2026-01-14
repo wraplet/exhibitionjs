@@ -18,10 +18,10 @@
   },
   "scripts": {
     "setup": "pnpm install",
-    "build": "tsx ./node_modules/.bin/webpack --mode production --config webpack.config.ts",
+    "build": "tsx node_modules/webpack/bin/webpack.js --mode production --config webpack.config.ts",
     "serve": "npx http-server . -p 8080",
-    "dev:build": "tsx ./node_modules/.bin/webpack --mode development --config webpack.config.ts",
-    "dev:watch": "tsx ./node_modules/.bin/webpack --mode development --watch --config webpack.config.ts",
+    "dev:build": "tsx node_modules/webpack/bin/webpack.js --mode development --config webpack.config.ts",
+    "dev:watch": "tsx node_modules/webpack/bin/webpack.js --mode development --watch --config webpack.config.ts",
     "lint": "tsc --noemit && npx eslint './src/**/*.ts' './tests/**/*.ts'",
     "lint:fix": "npx eslint './src/**/*.ts' './tests/**/*.ts' --fix",
     "tests-setup": "npx playwright install chromium",
