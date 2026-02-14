@@ -2,6 +2,7 @@ import { AbstractWraplet, Constructable, Core } from "wraplet";
 import { DocumentAlterer } from "./types/DocumentAlterer";
 import {
   ElementAttributeStorage,
+  isKeyValueStorage,
   KeyValueStorage,
   StorageValidators,
   StorageWrapper,
@@ -29,10 +30,17 @@ export class ExhibitionPreview
 
   constructor(
     core: Core<HTMLIFrameElement>,
-    options: ExhibitionPreviewOptions = {},
+    options?: ExhibitionPreviewOptions,
     optionsStorage?: KeyValueStorage<Partial<ExhibitionPreviewOptions>>,
   ) {
     super(core);
+
+    if (
+      typeof optionsStorage !== "undefined" &&
+      !isKeyValueStorage(optionsStorage)
+    ) {
+      throw new Error("Provided optionsStorage must be a KeyValueStorage");
+    }
 
     const validators: StorageValidators<ExhibitionPreviewOptions> = {
       updateHeight: (data: unknown) => typeof data === "boolean",

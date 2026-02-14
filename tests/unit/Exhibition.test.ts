@@ -1,17 +1,15 @@
+import { Exhibition } from "../../src";
 import {
-  Exhibition,
-  EditorsOptionsWrapper,
-  PreviewOptionsWrapper,
-} from "../../src/Exhibition";
-import {
+  Constructable,
   DefaultCore,
   WrapletApi,
   WrapletChildrenMap,
   WrapletSymbol,
 } from "wraplet";
-import { ExhibitionPreview } from "../../src/ExhibitionPreview";
-import { DocumentAltererProviderWraplet } from "../../src/types/DocumentAltererProviderWraplet";
-import { DocumentAlterer } from "../../src/types/DocumentAlterer";
+import { ExhibitionPreview } from "../../src";
+import { DocumentAltererProviderWraplet } from "../../src";
+import { DocumentAlterer } from "../../src";
+import { MonacoInstance } from "../../src";
 
 describe("Exhibition", () => {
   it("should be able to add and remove editors", () => {
@@ -68,61 +66,80 @@ describe("Exhibition", () => {
     expect(preview.hasDocumentAlterer(mockAlterer)).toBe(false);
   });
 
-  it("should override 'editorsClass' based on the provided option when producing map", async () => {
-    const mock = {};
-    const map = Exhibition.getMap<any>({
-      editors: { Class: mock as any },
+  it("should override 'Class' based on the provided options when producing customized map", async () => {
+    const editorsClassMock = jest.fn();
+    const previewClassMock = jest.fn();
+    const map = Exhibition.getCustomizedMap({
+      editors: { Class: editorsClassMock },
+      preview: { Class: previewClassMock },
     });
-    expect(map.editors.Class).toBe(mock);
+    expect(map.editors.Class).toBe(editorsClassMock);
+    expect(map.preview.Class).toBe(previewClassMock);
   });
 
   it("should allow to provide custom options to the children when producing map", async () => {
-    type CustomPreviewOptions = {
-      option1: string;
-    };
-    type CustomEditorOptions = {
-      option2: string;
+    const funcGetMap = () => {
+      // @ts-expect-error Default editors options require "monaco" property.
+      Exhibition.getMap();
     };
 
-    const editorsOptions: CustomEditorOptions = {
-      option2: "options2value",
-    };
+    expect(funcGetMap).toThrow("Configuration must be provided.");
 
-    const previewOptions: CustomPreviewOptions = {
-      option1: "options1value",
-    };
-
-    // @ts-expect-error When "undefined" is provided, the default types are used. Default editors
-    // options require "monaco" property.
-    Exhibition.getMap();
-
-    // editors options are deferred, so the requirement of the "monaco" property should
-    // not be enforced.
-    Exhibition.getMap<"deferred">();
-
-    // Custom editors options are provided.
-    Exhibition.getMap<EditorsOptionsWrapper<CustomEditorOptions>>({
+    // If "monaco" is provided, there should be no error.
+    Exhibition.getMap({
       editors: {
-        options: editorsOptions,
+        options: {
+          monaco: null as unknown as MonacoInstance,
+        },
       },
     });
 
-    // @ts-expect-error When "undefined" is provided, the default types are used.
-    // This should cause an error as default editors options require "monaco" property.
-    Exhibition.getMap<undefined>();
+    /*
+     * Customized map.
+     */
 
-    // Testing if default options are applied correctly.
-    const map = Exhibition.getMap<
-      EditorsOptionsWrapper<CustomEditorOptions>,
-      PreviewOptionsWrapper<CustomPreviewOptions>
-    >({
-      preview: { options: previewOptions },
+    const funcGetCustomizedMap = () => {
+      // @ts-expect-error Default classes have to be provided.
+      Exhibition.getCustomizedMap();
+    };
+
+    expect(funcGetCustomizedMap).toThrow("Configuration must be provided.");
+
+    // If classes are provided, there should be no error.
+    Exhibition.getCustomizedMap({
       editors: {
-        options: editorsOptions,
+        Class: null as unknown as Constructable<DocumentAltererProviderWraplet>,
+      },
+      preview: {
+        Class: null as unknown as Constructable<ExhibitionPreview>,
+      },
+    });
+  });
+
+  it("should not mutate the global ExhibitionMap across multiple getMap calls", () => {
+    const monacoOptionsStorageMock1 = jest.fn();
+    const monacoOptionsStorageMock2 = jest.fn();
+    const map1 = Exhibition.getMap({
+      editors: {
+        optionsStorage: monacoOptionsStorageMock1 as any,
+        options: {
+          monaco: null as any,
+        },
       },
     });
 
-    expect(map.preview.args).toContain(previewOptions);
-    expect(map.editors.args).toContain(editorsOptions);
+    expect(map1.editors.args[1]).toEqual(monacoOptionsStorageMock1);
+
+    Exhibition.getMap({
+      editors: {
+        optionsStorage: monacoOptionsStorageMock2 as any,
+        options: {
+          monaco: null as any,
+        },
+      },
+    });
+
+    // map1 didn't mutate.
+    expect(map1.editors.args[1]).toEqual(monacoOptionsStorageMock1);
   });
 });

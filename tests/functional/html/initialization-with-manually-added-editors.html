@@ -73,7 +73,7 @@
         // We don't want for Exhibitions to init automatically.
         const exhibitions = await Exhibition.createMultiple(document.body, Exhibition.getMap({
             editors: {
-                disableSelector: true,
+                selector: null,
             },
         }), {}, {init: false});
 

@@ -10,6 +10,7 @@ import {
 } from "wraplet";
 import {
   ElementAttributeStorage,
+  isKeyValueStorage,
   KeyValueStorage,
   StorageValidators,
   StorageWrapper,
@@ -103,6 +104,13 @@ export class ExhibitionMonacoEditor
     optionsStorage?: KeyValueStorage<Partial<ExhibitionMonacoEditorOptions>>,
   ) {
     super(core);
+
+    if (
+      typeof optionsStorage !== "undefined" &&
+      !isKeyValueStorage(optionsStorage)
+    ) {
+      throw new Error("Provided optionsStorage must be a KeyValueStorage");
+    }
 
     this.alterDocument = this.alterDocument.bind(this);
 

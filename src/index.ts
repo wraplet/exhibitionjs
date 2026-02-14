@@ -2,9 +2,8 @@ export { Exhibition } from "./Exhibition";
 export type {
   ExhibitionOptions,
   ExhibitionInitOptions,
-  ExhibitionMapOptions,
-  EditorsOptionsWrapper,
-  PreviewOptionsWrapper,
+  MapConfiguration,
+  DefaultMapConfiguration,
 } from "./Exhibition";
 
 export { exhibitionDefaultAttribute } from "./selectors";

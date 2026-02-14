@@ -20,12 +20,12 @@ import { exhibitionDefaultAttribute } from "./selectors";
 import { DocumentAltererProviderWraplet } from "./types/DocumentAltererProviderWraplet";
 import {
   ElementAttributeStorage,
+  isKeyValueStorage,
   KeyValueStorage,
   StorageWrapper,
 } from "wraplet/storage";
 import { DocumentAlterer } from "./types/DocumentAlterer";
 import { PreviewWraplet } from "./types/PreviewWraplet";
-import { AllOptional } from "./types/utils";
 
 export type ExhibitionOptions = {
   /**
@@ -39,85 +39,57 @@ export type ExhibitionInitOptions = {
   updatePreview?: boolean;
 };
 
-type PreviewOptionsBaseWrapper = {
-  Class?: Constructable<PreviewWraplet>;
-};
-
-export type PreviewOptionsWrapper<
-  O,
-  IS_REQUIRED extends boolean = false,
-> = IS_REQUIRED extends true
-  ? {
-      preview: {
-        options: O;
-      } & PreviewOptionsBaseWrapper;
-    }
-  : {
-      preview?: {
-        options?: O;
-      } & PreviewOptionsBaseWrapper;
-    };
-
-type EditorsOptionsBaseWrapper = {
-  Class?: Constructable<DocumentAltererProviderWraplet>;
-  disableSelector?: boolean;
-};
-
-export type EditorsOptionsWrapper<
-  O,
-  IS_REQUIRED extends boolean = false,
-> = IS_REQUIRED extends true
-  ? {
-      editors: {
-        options: O;
-      } & EditorsOptionsBaseWrapper;
-    }
-  : {
-      editors?: {
-        options?: O;
-      } & EditorsOptionsBaseWrapper;
-    };
-
-export type ExhibitionMapBaseOptions = {};
-
-export type ExhibitionMapOptions<
-  EO extends EditorsOptionsWrapper<unknown, boolean> | "deferred" | undefined =
-    EditorsOptionsWrapper<ExhibitionMonacoEditorOptions, true>,
-  PO extends PreviewOptionsWrapper<unknown, boolean> | "deferred" | undefined =
-    PreviewOptionsWrapper<ExhibitionPreviewOptions>,
-> = ExhibitionMapBaseOptions &
-  (EO extends "deferred"
-    ? {}
-    : EO extends undefined
-      ? EditorsOptionsWrapper<ExhibitionMonacoEditorOptions, true>
-      : EO) &
-  (PO extends "deferred"
-    ? {}
-    : PO extends undefined
-      ? PreviewOptionsWrapper<ExhibitionPreviewOptions>
-      : PO);
-
-const ExhibitionMap = {
+export type MapConfiguration = {
   editors: {
-    selector: "[data-js-exhibition-editor]" as string | undefined,
-    multiple: true,
-    required: false,
-    Class:
-      ExhibitionMonacoEditor as Constructable<DocumentAltererProviderWraplet>,
-    args: [] as unknown[],
-  },
+    selector?: string;
+    Class: Constructable<DocumentAltererProviderWraplet>;
+    args?: unknown[];
+  };
   preview: {
-    selector: "iframe[data-js-exhibition-preview]",
-    multiple: false,
-    required: true,
-    Class: ExhibitionPreview as Constructable<PreviewWraplet>,
-    args: [] as unknown[],
-  },
-} satisfies WrapletChildrenMap;
+    selector?: string;
+    Class: Constructable<PreviewWraplet>;
+    args?: unknown[];
+  };
+};
+
+export type DefaultMapConfiguration = {
+  editors: {
+    selector?: string;
+    options: ExhibitionMonacoEditorOptions;
+    optionsStorage?: KeyValueStorage<Partial<ExhibitionMonacoEditorOptions>>;
+  };
+  preview?: {
+    selector?: string;
+    options?: ExhibitionPreviewOptions;
+    optionsStorage?: KeyValueStorage<ExhibitionPreviewOptions>;
+  };
+};
+
+/**
+ * This is a factory function that creates a new map each time it's run.
+ */
+function createMap(configuration: MapConfiguration) {
+  return {
+    editors: {
+      selector: configuration.editors.selector,
+      multiple: true,
+      required: false,
+      Class: configuration.editors.Class,
+      args: configuration.editors.args || [],
+    },
+    preview: {
+      selector: configuration.preview.selector,
+      multiple: false,
+      required: true,
+      Class: configuration.preview.Class,
+      args: configuration.preview.args || [],
+    },
+  } satisfies WrapletChildrenMap;
+}
 
 export class Exhibition extends AbstractWraplet<
   HTMLElement,
-  typeof ExhibitionMap
+  ReturnType<typeof createMap>
 > {
   private status: Status = {
     isInitialized: false,
@@ -128,14 +100,23 @@ export class Exhibition extends AbstractWraplet<
 
   private options: KeyValueStorage<Required<ExhibitionOptions>>;
   constructor(
-    core: Core<HTMLElement, typeof ExhibitionMap>,
+    core: Core<HTMLElement, ReturnType<typeof createMap>>,
     options: ExhibitionOptions = {},
     optionsStorage?: KeyValueStorage<Partial<ExhibitionOptions>>,
   ) {
     super(core);
+
+    if (
+      typeof optionsStorage !== "undefined" &&
+      !isKeyValueStorage(optionsStorage)
+    ) {
+      throw new Error("Provided optionsStorage must be a KeyValueStorage");
+    }
+
     const defaultOptions: Required<ExhibitionOptions> = {
       updaterSelector: "[data-js-exhibition-updater]",
     };
+
     const optsStorage =
       optionsStorage ??
       new ElementAttributeStorage<Partial<ExhibitionOptions>, true>(
@@ -266,7 +247,7 @@ export class Exhibition extends AbstractWraplet<
    * @returns Array of Exhibition instances.
    */
   public static async createMultiple<
-    M extends typeof ExhibitionMap = typeof ExhibitionMap,
+    M extends ReturnType<typeof createMap> = ReturnType<typeof createMap>,
   >(
     node: ParentNode,
     map: M,
@@ -300,7 +281,7 @@ export class Exhibition extends AbstractWraplet<
    * @param initOptions Options related to the creation process of the Exhibitions.
    */
   public static async create<
-    M extends typeof ExhibitionMap = typeof ExhibitionMap,
+    M extends ReturnType<typeof createMap> = ReturnType<typeof createMap>,
   >(
     element: HTMLElement,
     map: M,
@@ -309,7 +290,7 @@ export class Exhibition extends AbstractWraplet<
   ): Promise<Exhibition> {
     initOptions = this.fillCreateOptionsWithDefaults(initOptions);
     this.validateInitOptions(initOptions, map);
-    const core = new DefaultCore<HTMLElement, typeof ExhibitionMap>(
+    const core = new DefaultCore<HTMLElement, ReturnType<typeof createMap>>(
       element,
       map,
     );
@@ -333,7 +314,7 @@ export class Exhibition extends AbstractWraplet<
    */
   private static validateInitOptions(
     initOptions: ExhibitionInitOptions,
-    map: typeof ExhibitionMap,
+    map: ReturnType<typeof createMap>,
   ) {
     if (initOptions.init && map.editors.selector === undefined) {
       throw new Error(
@@ -371,69 +352,60 @@ export class Exhibition extends AbstractWraplet<
   }
 
   /**
-   * Returns a generic dependecy map with an undefined editor class that has to be provided through
-   * the options.
+   * Creates a default, preconfigured, map for Exhibition.
    */
-  public static getMap<
-    EO extends
-      | EditorsOptionsWrapper<unknown, boolean>
-      | "deferred"
-      | undefined = undefined,
-    PO extends
-      | PreviewOptionsWrapper<unknown, boolean>
-      | "deferred"
-      | undefined = undefined,
-  >(
-    ...args: AllOptional<ExhibitionMapOptions<EO, PO>> extends true
-      ? [mapOptions?: NoInfer<ExhibitionMapOptions<EO, PO>>]
-      : [mapOptions: NoInfer<ExhibitionMapOptions<EO, PO>>]
-  ): typeof ExhibitionMap {
-    const mapOptions = args[0];
-    const map: typeof ExhibitionMap = ExhibitionMap;
-    const allOptions: Required<
-      ExhibitionMapOptions<
-        EditorsOptionsWrapper<unknown, boolean> | undefined,
-        PreviewOptionsWrapper<unknown, boolean> | undefined
-      >
-    > = {
-      ...{
-        preview: {},
-        editors: {},
+  public static getMap(
+    configuration: DefaultMapConfiguration,
+  ): ReturnType<typeof createMap> {
+    if (!configuration) {
+      throw new Error("Configuration must be provided.");
+    }
+
+    const map: ReturnType<typeof createMap> = createMap({
+      editors: {
+        selector:
+          configuration.editors.selector === null
+            ? undefined
+            : "[data-js-exhibition-editor]",
+        Class: ExhibitionMonacoEditor,
+        args: [
+          configuration.editors?.options,
+          configuration.editors?.optionsStorage,
+        ],
       },
-      ...mapOptions,
-    };
-
-    if (allOptions.editors.Class) {
-      map["editors"]["Class"] = allOptions.editors.Class;
-    }
-
-    if (allOptions.preview.Class) {
-      map["preview"]["Class"] = allOptions.preview.Class;
-    }
+      preview: {
+        selector:
+          configuration.preview?.selector === null
+            ? undefined
+            : "iframe[data-js-exhibition-preview]",
+        Class: ExhibitionPreview,
+        args: [
+          configuration.preview?.options,
+          configuration.preview?.optionsStorage,
+        ],
+      },
+    });
 
     if (
-      allOptions.editors.disableSelector &&
+      configuration.editors.selector === null &&
       map["editors"]["Class"] instanceof ExhibitionMonacoEditor &&
-      (!allOptions.editors.options ||
-        !(allOptions.editors.options as { monaco?: unknown })["monaco"])
+      (!configuration.editors.options ||
+        !(configuration.editors.options as { monaco?: unknown })["monaco"])
     ) {
       throw new Error(
         "When selecting ExhibitionMonacoEditor instances, you must provide the 'monaco' option in the editors options. To avoid this error, set 'disableSelector' or provide the 'monaco' option.",
       );
     }
 
-    if (allOptions.editors.disableSelector) {
-      map["editors"]["selector"] = undefined;
-    }
-
-    if (allOptions.preview.options) {
-      map["preview"]["args"].push(allOptions.preview.options);
-    }
-
-    if (allOptions.editors.options) {
-      map["editors"]["args"].push(allOptions.editors.options);
-    }
-
     return map;
+  }
+
+  public static getCustomizedMap(
+    configuration: MapConfiguration,
+  ): ReturnType<typeof createMap> {
+    if (!configuration) {
+      throw new Error("Configuration must be provided.");
+    }
+    return createMap(configuration);
   }
 }
