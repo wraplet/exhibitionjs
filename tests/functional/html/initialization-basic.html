@@ -71,10 +71,12 @@
         // We can change the default attribute identifying the Exhibition instance and its dependencies
         // by modifying the dependency map / map options.
         await Exhibition.createMultiple(document.body, Exhibition.getMap({
-            editors: {
-                options: {
-                    monaco: monaco,
-                    monacoEditorOptions: defaultMonacoOptions,
+            configuration: {
+                editors: {
+                    options: {
+                        monaco: monaco,
+                        monacoEditorOptions: defaultMonacoOptions,
+                    },
                 },
             },
         }), {}, {updatePreview: true});

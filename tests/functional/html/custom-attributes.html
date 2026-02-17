@@ -34,10 +34,12 @@
     const ExhibitionModule = await import('/dist/index.js');
     const Exhibition = ExhibitionModule.Exhibition;
     await Exhibition.createMultiple(document.body, Exhibition.getMap({
-      editors: {
-        options: {
-          monacoEditorOptions: { value: '', minimap: { enabled: false }, scrollBeyondLastLine: false },
-          monaco: monaco,
+      configuration: {
+        editors: {
+          options: {
+            monacoEditorOptions: { value: '', minimap: { enabled: false }, scrollBeyondLastLine: false },
+            monaco: monaco,
+          },
         },
       },
     }));

@@ -1,0 +1,2 @@
+- Write commit messages in past tense.
+- All comments and documentation should be written in the English language.

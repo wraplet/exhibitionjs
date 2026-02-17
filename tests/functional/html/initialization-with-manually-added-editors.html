@@ -72,9 +72,7 @@
 
         // We don't want for Exhibitions to init automatically.
         const exhibitions = await Exhibition.createMultiple(document.body, Exhibition.getMap({
-            editors: {
-                selector: null,
-            },
+            deferEditors: true,
         }), {}, {init: false});
 
         const exhibition = exhibitions[0];

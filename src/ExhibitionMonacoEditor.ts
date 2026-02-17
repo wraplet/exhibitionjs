@@ -186,6 +186,7 @@ export class ExhibitionMonacoEditor
       {
         core: this.core,
         destroyCallback: this.destroy,
+        wraplet: this,
         status: this.status,
       },
       async () => {

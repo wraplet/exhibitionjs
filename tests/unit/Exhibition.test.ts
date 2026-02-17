@@ -3,7 +3,7 @@ import {
   Constructable,
   DefaultCore,
   WrapletApi,
-  WrapletChildrenMap,
+  WrapletDependencyMap,
   WrapletSymbol,
 } from "wraplet";
 import { ExhibitionPreview } from "../../src";
@@ -23,7 +23,7 @@ describe("Exhibition", () => {
         selector: "[data-js-exhibition-editor]",
         multiple: true,
         required: false,
-        Class: {} as any,
+        Class: class {} as any,
         args: [],
       },
       preview: {
@@ -33,7 +33,7 @@ describe("Exhibition", () => {
         Class: ExhibitionPreview,
         args: [],
       },
-    } as const satisfies WrapletChildrenMap;
+    } as const satisfies WrapletDependencyMap;
 
     const core = new DefaultCore(container, ExhibitionMap);
     const exhibition = new Exhibition(core);
@@ -80,19 +80,26 @@ describe("Exhibition", () => {
   it("should allow to provide custom options to the children when producing map", async () => {
     const funcGetMap = () => {
       // @ts-expect-error Default editors options require "monaco" property.
-      Exhibition.getMap();
+      Exhibition.getMap({});
     };
 
-    expect(funcGetMap).toThrow("Configuration must be provided.");
+    expect(funcGetMap).toThrow(
+      "If editors are enabled, editors configuration must be provided.",
+    );
 
     // If "monaco" is provided, there should be no error.
     Exhibition.getMap({
-      editors: {
-        options: {
-          monaco: null as unknown as MonacoInstance,
+      configuration: {
+        editors: {
+          options: {
+            monaco: {} as unknown as MonacoInstance,
+          },
         },
       },
     });
+
+    // If editors are disabled, there should be no error.
+    Exhibition.getMap({ deferEditors: true });
 
     /*
      * Customized map.
@@ -116,14 +123,65 @@ describe("Exhibition", () => {
     });
   });
 
+  it("should not allow invalid arguments configurations", async () => {
+    const funcDisabledEditorsEnabledSelector = () => {
+      Exhibition.getMap({
+        deferEditors: true,
+        configuration: {
+          editors: {
+            selector: ".test",
+          },
+        } as any,
+      });
+    };
+
+    expect(funcDisabledEditorsEnabledSelector).toThrow(
+      "If editors are disabled, editors selector cannot be used.",
+    );
+
+    const funcEnabledEditorsDisabledSelector = () => {
+      Exhibition.getMap({
+        configuration: {
+          editors: {
+            selector: undefined,
+          },
+        } as any,
+      });
+    };
+
+    expect(funcEnabledEditorsDisabledSelector).toThrow(
+      "If editors are enabled, editors selector cannot be manually set to non-string.",
+    );
+
+    const funcEnabledEditorsNoConfiguration = () => {
+      Exhibition.getMap({} as any);
+    };
+
+    expect(funcEnabledEditorsNoConfiguration).toThrow(
+      "If editors are enabled, editors configuration must be provided.",
+    );
+
+    const funcEnabledEditorsNoMonaco = () => {
+      Exhibition.getMap({
+        configuration: { editors: { options: {} as any } },
+      });
+    };
+
+    expect(funcEnabledEditorsNoMonaco).toThrow(
+      "If 'editors' dependency autoloading is not disabled, you must provide the 'monaco' option in its options.",
+    );
+  });
+
   it("should not mutate the global ExhibitionMap across multiple getMap calls", () => {
     const monacoOptionsStorageMock1 = jest.fn();
     const monacoOptionsStorageMock2 = jest.fn();
     const map1 = Exhibition.getMap({
-      editors: {
-        optionsStorage: monacoOptionsStorageMock1 as any,
-        options: {
-          monaco: null as any,
+      configuration: {
+        editors: {
+          optionsStorage: monacoOptionsStorageMock1 as any,
+          options: {
+            monaco: {} as any,
+          },
         },
       },
     });
@@ -131,10 +189,12 @@ describe("Exhibition", () => {
     expect(map1.editors.args[1]).toEqual(monacoOptionsStorageMock1);
 
     Exhibition.getMap({
-      editors: {
-        optionsStorage: monacoOptionsStorageMock2 as any,
-        options: {
-          monaco: null as any,
+      configuration: {
+        editors: {
+          optionsStorage: monacoOptionsStorageMock2 as any,
+          options: {
+            monaco: {} as any,
+          },
         },
       },
     });

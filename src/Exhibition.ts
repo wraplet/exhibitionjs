@@ -6,7 +6,7 @@ import {
   customizeDefaultWrapletApi,
   DefaultCore,
   Status,
-  WrapletChildrenMap,
+  WrapletDependencyMap,
 } from "wraplet";
 import {
   ExhibitionPreview,
@@ -65,16 +65,29 @@ export type DefaultMapConfiguration = {
   };
 };
 
+export type DisabledEditorsDefaultMapConfiguration = Omit<
+  Partial<DefaultMapConfiguration>,
+  "editors"
+>;
+
+type GetMapArgs =
+  | { configuration: DefaultMapConfiguration; deferEditors?: false }
+  | {
+      configuration?: DisabledEditorsDefaultMapConfiguration;
+      deferEditors: true;
+    };
+
 /**
  * This is a factory function that creates a new map each time it's run.
  */
 function createMap(configuration: MapConfiguration) {
+  const Class = configuration.editors.Class || ExhibitionMonacoEditor;
   return {
     editors: {
       selector: configuration.editors.selector,
       multiple: true,
       required: false,
-      Class: configuration.editors.Class,
+      Class: Class,
       args: configuration.editors.args || [],
     },
     preview: {
@@ -84,7 +97,7 @@ function createMap(configuration: MapConfiguration) {
       Class: configuration.preview.Class,
       args: configuration.preview.args || [],
     },
-  } satisfies WrapletChildrenMap;
+  } satisfies WrapletDependencyMap;
 }
 
 export class Exhibition extends AbstractWraplet<
@@ -154,6 +167,7 @@ export class Exhibition extends AbstractWraplet<
       {
         core: this.core,
         status: this.status,
+        wraplet: this,
         destroyCallback: this.wraplet.destroy,
       },
       async () => {
@@ -161,7 +175,11 @@ export class Exhibition extends AbstractWraplet<
           throw new Error("Exhibition is already initialized");
         }
 
-        for (const editor of this.children.editors) {
+        if (!this.d.editors) {
+          throw new Error("Exhibition has no editors");
+        }
+
+        for (const editor of this.d.editors) {
           if (
             !editor.wraplet.status.isInitialized &&
             !editor.wraplet.status.isGettingInitialized
@@ -169,11 +187,7 @@ export class Exhibition extends AbstractWraplet<
             await editor.wraplet.initialize();
           }
 
-          if (
-            !this.children.preview.hasDocumentAlterer(
-              editor.getDocumentAlterer(),
-            )
-          ) {
+          if (!this.d.preview.hasDocumentAlterer(editor.getDocumentAlterer())) {
             this.addPreviewAlterer(
               editor.getDocumentAlterer(),
               editor.getPriority(),
@@ -198,23 +212,23 @@ export class Exhibition extends AbstractWraplet<
    * Adds DocumentAltererProviderWraplet instance to the list of editors.
    */
   public addEditor(editor: DocumentAltererProviderWraplet): void {
-    this.children.editors.add(editor);
-    this.children.preview.addDocumentAlterer(editor.getDocumentAlterer());
+    this.d.editors.add(editor);
+    this.d.preview.addDocumentAlterer(editor.getDocumentAlterer());
   }
 
   /**
    * Removes DocumentAltererProviderWraplet instance from the list of editors.
    */
   public removeEditor(editor: DocumentAltererProviderWraplet): void {
-    this.children.editors.delete(editor);
-    this.children.preview.removeDocumentAlterer(editor.getDocumentAlterer());
+    this.d.editors.delete(editor);
+    this.d.preview.removeDocumentAlterer(editor.getDocumentAlterer());
   }
 
   /**
    * Checks if the given editor is present in the list of editors.
    */
   public hasEditor(editor: DocumentAltererProviderWraplet): boolean {
-    return this.children.editors.has(editor);
+    return this.d.editors.has(editor);
   }
 
   /**
@@ -224,15 +238,15 @@ export class Exhibition extends AbstractWraplet<
     alterer: DocumentAlterer,
     priority: number = 0,
   ): void {
-    this.children.preview.addDocumentAlterer(alterer, priority);
+    this.d.preview.addDocumentAlterer(alterer, priority);
   }
 
   public getPreview(): PreviewWraplet {
-    return this.children.preview;
+    return this.d.preview;
   }
 
   public async updatePreview(): Promise<void> {
-    await this.children.preview.update();
+    await this.d.preview.update();
   }
 
   /**
@@ -354,50 +368,101 @@ export class Exhibition extends AbstractWraplet<
   /**
    * Creates a default, preconfigured, map for Exhibition.
    */
-  public static getMap(
-    configuration: DefaultMapConfiguration,
-  ): ReturnType<typeof createMap> {
-    if (!configuration) {
-      throw new Error("Configuration must be provided.");
-    }
+  public static getMap(args: GetMapArgs): ReturnType<typeof createMap> {
+    const deferEditors = args.deferEditors || false;
 
-    const map: ReturnType<typeof createMap> = createMap({
-      editors: {
-        selector:
-          configuration.editors.selector === null
-            ? undefined
-            : "[data-js-exhibition-editor]",
-        Class: ExhibitionMonacoEditor,
-        args: [
-          configuration.editors?.options,
-          configuration.editors?.optionsStorage,
-        ],
-      },
-      preview: {
-        selector:
-          configuration.preview?.selector === null
-            ? undefined
-            : "iframe[data-js-exhibition-preview]",
-        Class: ExhibitionPreview,
-        args: [
-          configuration.preview?.options,
-          configuration.preview?.optionsStorage,
-        ],
-      },
-    });
+    /*
+     * Args integrity checks.
+     */
 
     if (
-      configuration.editors.selector === null &&
-      map["editors"]["Class"] instanceof ExhibitionMonacoEditor &&
-      (!configuration.editors.options ||
-        !(configuration.editors.options as { monaco?: unknown })["monaco"])
+      deferEditors &&
+      (args.configuration as DefaultMapConfiguration)?.editors?.selector
     ) {
       throw new Error(
-        "When selecting ExhibitionMonacoEditor instances, you must provide the 'monaco' option in the editors options. To avoid this error, set 'disableSelector' or provide the 'monaco' option.",
+        "If editors are disabled, editors selector cannot be used.",
       );
     }
 
-    return map;
+    if (
+      !deferEditors &&
+      (args.configuration as DefaultMapConfiguration)?.editors &&
+      "selector" in (args.configuration as DefaultMapConfiguration).editors &&
+      !(args.configuration as DefaultMapConfiguration).editors.selector
+    ) {
+      throw new Error(
+        "If editors are enabled, editors selector cannot be manually set to non-string.",
+      );
+    }
+
+    if (!deferEditors) {
+      if (!(args.configuration as DefaultMapConfiguration)?.editors) {
+        throw new Error(
+          "If editors are enabled, editors configuration must be provided.",
+        );
+      }
+    }
+
+    if (
+      !deferEditors &&
+      (!(args.configuration as DefaultMapConfiguration)?.editors?.options ||
+        !(
+          (args.configuration as DefaultMapConfiguration)?.editors?.options as {
+            monaco?: unknown;
+          }
+        )["monaco"])
+    ) {
+      throw new Error(
+        "If 'editors' dependency autoloading is not disabled, you must provide the 'monaco' option in its options.",
+      );
+    }
+
+    /*
+     * / Args integrity checks.
+     */
+
+    let editorsSelector: string | undefined = "[data-js-exhibition-editor]";
+    if (deferEditors) {
+      editorsSelector = undefined;
+    }
+
+    const editorsArgs: unknown[] = [];
+
+    if (!deferEditors) {
+      if (args.configuration.editors.options) {
+        editorsArgs.push(args.configuration.editors.options);
+      }
+      if (args.configuration.editors.optionsStorage) {
+        editorsArgs.push(args.configuration.editors.optionsStorage);
+      }
+    }
+
+    let previewSelector: string = "iframe[data-js-exhibition-preview]";
+    const previewArgs: unknown[] = [];
+    if (args.configuration?.preview) {
+      if (args.configuration.preview?.selector) {
+        previewSelector = args.configuration.preview.selector;
+      }
+      if (args.configuration.preview.options) {
+        previewArgs.push(args.configuration.preview.options);
+      }
+      if (args.configuration.preview.optionsStorage) {
+        previewArgs.push(args.configuration.preview.optionsStorage);
+      }
+    }
+
+    return createMap({
+      editors: {
+        selector: editorsSelector,
+        Class: ExhibitionMonacoEditor,
+        args: editorsArgs,
+      },
+      preview: {
+        selector: previewSelector,
+        Class: ExhibitionPreview,
+        args: previewArgs,
+      },
+    });
   }
 
   public static getCustomizedMap(

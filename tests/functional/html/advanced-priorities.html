@@ -43,10 +43,12 @@
         const Exhibition = ExhibitionModule.Exhibition;
         const defaultMonacoOptions = { value: '', minimap: { enabled: false }, scrollBeyondLastLine: false };
         await Exhibition.createMultiple(document.body, Exhibition.getMap({
-            editors: {
-                options: {
-                    monaco: monaco,
-                    monacoEditorOptions: defaultMonacoOptions,
+            configuration: {
+                editors: {
+                    options: {
+                        monaco: monaco,
+                        monacoEditorOptions: defaultMonacoOptions,
+                    },
                 },
             },
         }));
