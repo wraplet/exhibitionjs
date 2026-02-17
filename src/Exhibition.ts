@@ -270,7 +270,7 @@ export class Exhibition extends AbstractWraplet<
     attribute: string = exhibitionDefaultAttribute,
   ): Promise<Exhibition[]> {
     initOptions = this.fillCreateOptionsWithDefaults(initOptions);
-    this.validateInitOptions(initOptions, map);
+    this.validateInitOptions(initOptions);
 
     const exhibitions = this.createWraplets<HTMLElement, Exhibition>(
       node,
@@ -303,7 +303,7 @@ export class Exhibition extends AbstractWraplet<
     initOptions: ExhibitionInitOptions = {},
   ): Promise<Exhibition> {
     initOptions = this.fillCreateOptionsWithDefaults(initOptions);
-    this.validateInitOptions(initOptions, map);
+    this.validateInitOptions(initOptions);
     const core = new DefaultCore<HTMLElement, ReturnType<typeof createMap>>(
       element,
       map,
@@ -326,16 +326,7 @@ export class Exhibition extends AbstractWraplet<
   /**
    * Validate create options.
    */
-  private static validateInitOptions(
-    initOptions: ExhibitionInitOptions,
-    map: ReturnType<typeof createMap>,
-  ) {
-    if (initOptions.init && map.editors.selector === undefined) {
-      throw new Error(
-        "Cannot initialize exhibition with undefined editors.selector",
-      );
-    }
-
+  private static validateInitOptions(initOptions: ExhibitionInitOptions) {
     if (!initOptions.init && initOptions.updatePreview) {
       throw new Error(
         "Cannot update preview without initializing exhibitions first",
