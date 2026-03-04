@@ -102,30 +102,32 @@ class AmbientDtsPlugin {
       })
       .map((line) => {
         // Remove "export" keyword from declarations
-        // "export declare ..." -> "declare ..."
-        line = line.replace(/^export\s+declare\s/, "declare ");
+        // "export declare ..." -> strip both export and declare
+        line = line.replace(/^export\s+declare\s/, "");
         // "export type X = ..." -> "type X = ..."
         line = line.replace(/^export\s+type\s+(\w)/, "type $1");
         // "export interface X" -> "interface X"
         line = line.replace(/^export\s+interface\s/, "interface ");
         // "export enum X" -> "enum X"
         line = line.replace(/^export\s+enum\s/, "enum ");
-        // "export abstract class" -> "declare abstract class"
-        line = line.replace(/^export\s+abstract\s+class\s/, "declare abstract class ");
-        // "export class" -> "declare class"
-        line = line.replace(/^export\s+class\s/, "declare class ");
-        // "export function" -> "declare function"
-        line = line.replace(/^export\s+function\s/, "declare function ");
-        // "export const" -> "declare const"
-        line = line.replace(/^export\s+const\s/, "declare const ");
-        // "export default class" -> "declare class"
-        line = line.replace(/^export\s+default\s+class\s/, "declare class ");
-        // "export default function" -> "declare function"
-        line = line.replace(/^export\s+default\s+function\s/, "declare function ");
-        // "export default abstract class" -> "declare abstract class"
-        line = line.replace(/^export\s+default\s+abstract\s+class\s/, "declare abstract class ");
+        // "export abstract class" -> "abstract class"
+        line = line.replace(/^export\s+abstract\s+class\s/, "abstract class ");
+        // "export class" -> "class"
+        line = line.replace(/^export\s+class\s/, "class ");
+        // "export function" -> "function"
+        line = line.replace(/^export\s+function\s/, "function ");
+        // "export const" -> "const"
+        line = line.replace(/^export\s+const\s/, "const ");
+        // "export default class" -> "class"
+        line = line.replace(/^export\s+default\s+class\s/, "class ");
+        // "export default function" -> "function"
+        line = line.replace(/^export\s+default\s+function\s/, "function ");
+        // "export default abstract class" -> "abstract class"
+        line = line.replace(/^export\s+default\s+abstract\s+class\s/, "abstract class ");
         // "export { X }" (local, no "from") -> remove
         line = line.replace(/^export\s+\{[^}]*\}\s*;\s*$/, "");
+        // Remove standalone "declare" keyword
+        line = line.replace(/^declare\s+(class|abstract|function|const|let|var|enum)\s/, "$1 ");
         return line;
       })
       .filter((line) => line.trim() !== "")
