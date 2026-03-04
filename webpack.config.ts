@@ -1,6 +1,7 @@
 import webpack from "webpack";
 import path from "path";
 import {fileURLToPath} from "url";
+import AmbientDtsPlugin from "./plugins/AmbientDtsPlugin";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -70,11 +71,16 @@ function createOutputConfig(
   };
 }
 
-const indexEsmConfig: webpack.Configuration = createOutputConfig(
-  "index.js",
-  "./src/index.ts",
-  "module",
-);
+const indexEsmConfig: webpack.Configuration = {
+  ...createOutputConfig("index.js", "./src/index.ts", "module"),
+  plugins: [
+    ...(baseConfig.plugins || []),
+    new AmbientDtsPlugin({
+      outputPath: path.resolve(__dirname, "dist", "ambient.d.ts"),
+      dtsDir: path.resolve(__dirname, "dist"),
+    }),
+  ],
+};
 
 const indexCjsConfig: webpack.Configuration = createOutputConfig(
   "index.cjs",
