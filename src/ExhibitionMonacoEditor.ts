@@ -156,6 +156,10 @@ export class ExhibitionMonacoEditor
     return super.supportedNodeTypesGuard([HTMLElement]);
   }
 
+  public async initialize() {
+    return this.wraplet.initialize();
+  }
+
   protected async onInitialize() {
     this.priority = await this.options.get("priority");
     this.monacoEditorOptions = await this.options.get("monacoEditorOptions");
