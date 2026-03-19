@@ -1,13 +1,4 @@
-import {
-  AbstractWraplet,
-  Constructable,
-  Core,
-  createDefaultDestroyCallback,
-  createDefaultInitializeCallback,
-  customizeDefaultWrapletApi,
-  DefaultCore,
-  Status,
-} from "wraplet";
+import { AbstractWraplet, Constructable, Core, DefaultCore } from "wraplet";
 import {
   ElementAttributeStorage,
   isKeyValueStorage,
@@ -86,13 +77,6 @@ export class ExhibitionMonacoEditor
   private editor: monaco.editor.IStandaloneCodeEditor | null = null;
   private options: KeyValueStorage<RequiredMonacoEditorOptions>;
 
-  private status: Status = {
-    isInitialized: false,
-    isDestroyed: false,
-    isGettingInitialized: false,
-    isGettingDestroyed: false,
-  };
-
   private priority: number = 0;
   private monacoEditorOptions:
     | RequiredMonacoEditorOptions["monacoEditorOptions"]
@@ -166,68 +150,40 @@ export class ExhibitionMonacoEditor
       { ...defaultOptions, ...options },
       validators,
     );
-
-    this.wraplet = customizeDefaultWrapletApi(
-      {
-        status: this.status,
-        initialize: this.initialize.bind(this),
-        destroy: this.destroy.bind(this),
-      },
-      this.wraplet,
-    );
   }
 
   protected supportedNodeTypes(): readonly Constructable<HTMLElement>[] {
     return super.supportedNodeTypesGuard([HTMLElement]);
   }
 
-  public async initialize() {
-    return createDefaultInitializeCallback(
-      {
-        core: this.core,
-        destroyCallback: this.destroy,
-        wraplet: this,
-        status: this.status,
-      },
-      async () => {
-        if (this.status.isInitialized) {
-          throw new Error("ExhibitionMonacoEditor is already initialized");
-        }
-        this.priority = await this.options.get("priority");
-        this.monacoEditorOptions = await this.options.get(
-          "monacoEditorOptions",
+  protected async onInitialize() {
+    this.priority = await this.options.get("priority");
+    this.monacoEditorOptions = await this.options.get("monacoEditorOptions");
+
+    if (await this.options.get("trimDefaultValue")) {
+      const monacoOptions = await this.options.get("monacoEditorOptions");
+      if (monacoOptions.value) {
+        monacoOptions.value = ExhibitionMonacoEditor.trimDefaultValue(
+          monacoOptions.value,
         );
+        await this.options.set("monacoEditorOptions", monacoOptions);
+      }
+    }
 
-        if (await this.options.get("trimDefaultValue")) {
-          const monacoOptions = await this.options.get("monacoEditorOptions");
-          if (monacoOptions.value) {
-            monacoOptions.value = ExhibitionMonacoEditor.trimDefaultValue(
-              monacoOptions.value,
-            );
-            await this.options.set("monacoEditorOptions", monacoOptions);
-          }
-        }
+    await this.validateOptions();
 
-        await this.validateOptions();
+    this.monaco = await this.getMonacoInstance();
 
-        this.monaco = await this.getMonacoInstance();
+    const editorCreator: EditorCreator =
+      (await this.options.get("monacoEditorCreator")) ||
+      (async (options, element, monaco) =>
+        ExhibitionMonacoEditor.createMonacoEditor(options, element, monaco));
 
-        const editorCreator: EditorCreator =
-          (await this.options.get("monacoEditorCreator")) ||
-          (async (options, element, monaco) =>
-            ExhibitionMonacoEditor.createMonacoEditor(
-              options,
-              element,
-              monaco,
-            ));
-
-        this.editor = await editorCreator(
-          await this.options.get("monacoEditorOptions"),
-          this.node,
-          this.monaco,
-        );
-      },
-    )();
+    this.editor = await editorCreator(
+      await this.options.get("monacoEditorOptions"),
+      this.node,
+      this.monaco,
+    );
   }
 
   public getPriority(): number {
@@ -408,18 +364,8 @@ export class ExhibitionMonacoEditor
     return trimmedLines.join("\n").trim();
   }
 
-  public async destroy() {
-    return createDefaultDestroyCallback(
-      {
-        core: this.core,
-        wraplet: this,
-        destroyListeners: this.destroyListeners,
-        status: this.status,
-      },
-      async () => {
-        this.editor?.dispose();
-      },
-    )();
+  protected async onDestroy() {
+    this.editor?.dispose();
   }
 
   /**

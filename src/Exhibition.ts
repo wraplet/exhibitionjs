@@ -2,10 +2,7 @@ import {
   AbstractWraplet,
   Constructable,
   Core,
-  createDefaultInitializeCallback,
-  customizeDefaultWrapletApi,
   DefaultCore,
-  Status,
   WrapletDependencyMap,
 } from "wraplet";
 import {
@@ -104,13 +101,6 @@ export class Exhibition extends AbstractWraplet<
   HTMLElement,
   ReturnType<typeof createMap>
 > {
-  private status: Status = {
-    isInitialized: false,
-    isDestroyed: false,
-    isGettingInitialized: false,
-    isGettingDestroyed: false,
-  };
-
   private options: KeyValueStorage<Required<ExhibitionOptions>>;
   constructor(
     core: Core<HTMLElement, ReturnType<typeof createMap>>,
@@ -148,64 +138,46 @@ export class Exhibition extends AbstractWraplet<
         updaterSelector: (data: unknown) => typeof data === "string",
       },
     );
-
-    this.wraplet = customizeDefaultWrapletApi(
-      {
-        status: this.status,
-        initialize: this.initialize.bind(this),
-      },
-      this.wraplet,
-    );
   }
 
   protected supportedNodeTypes(): readonly Constructable<HTMLElement>[] {
     return super.supportedNodeTypesGuard([HTMLElement]);
   }
 
-  public async initialize() {
-    return createDefaultInitializeCallback(
-      {
-        core: this.core,
-        status: this.status,
-        wraplet: this,
-        destroyCallback: this.wraplet.destroy,
-      },
-      async () => {
-        if (this.status.isInitialized) {
-          throw new Error("Exhibition is already initialized");
-        }
+  public async initialize(): Promise<void> {
+    await this.wraplet.initialize();
+  }
 
-        if (!this.d.editors) {
-          throw new Error("Exhibition has no editors");
-        }
+  protected async onInitialize() {
+    if (!this.d.editors) {
+      throw new Error("Exhibition has no editors");
+    }
 
-        for (const editor of this.d.editors) {
-          if (
-            !editor.wraplet.status.isInitialized &&
-            !editor.wraplet.status.isGettingInitialized
-          ) {
-            await editor.wraplet.initialize();
-          }
+    for (const editor of this.d.editors) {
+      if (
+        !editor.wraplet.status.isInitialized &&
+        !editor.wraplet.status.isGettingInitialized
+      ) {
+        await editor.wraplet.initialize();
+      }
 
-          if (!this.d.preview.hasDocumentAlterer(editor.getDocumentAlterer())) {
-            this.addPreviewAlterer(
-              editor.getDocumentAlterer(),
-              editor.getPriority(),
-            );
-          }
-        }
-
-        const updaterElements = this.node.querySelectorAll(
-          await this.options.get("updaterSelector"),
+      if (!this.d.preview.hasDocumentAlterer(editor.getDocumentAlterer())) {
+        this.addPreviewAlterer(
+          editor.getDocumentAlterer(),
+          editor.getPriority(),
         );
+      }
+    }
 
-        for (const element of updaterElements) {
-          this.core.addEventListener(element, "click", () => {
-            this.updatePreview();
-          });
-        }
-      },
-    )();
+    const updaterElements = this.node.querySelectorAll(
+      await this.options.get("updaterSelector"),
+    );
+
+    for (const element of updaterElements) {
+      this.core.addEventListener(element, "click", () => {
+        this.updatePreview();
+      });
+    }
   }
 
   /**
@@ -272,12 +244,7 @@ export class Exhibition extends AbstractWraplet<
     initOptions = this.fillCreateOptionsWithDefaults(initOptions);
     this.validateInitOptions(initOptions);
 
-    const exhibitions = this.createWraplets<HTMLElement, Exhibition>(
-      node,
-      map,
-      attribute,
-      [options],
-    );
+    const exhibitions = this.createWraplets(node, map, attribute, [options]);
 
     for (const exhibition of exhibitions) {
       await this.applyCreateOptions(exhibition, initOptions);
