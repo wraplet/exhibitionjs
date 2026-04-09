@@ -1,4 +1,4 @@
-import { AbstractWraplet, Constructable, Core } from "wraplet";
+import { AbstractWraplet, Constructable } from "wraplet";
 import { DocumentAlterer } from "./types/DocumentAlterer";
 import {
   ElementAttributeStorage,
@@ -29,11 +29,11 @@ export class ExhibitionPreview
   private options: KeyValueStorage<Required<ExhibitionPreviewOptions>>;
 
   constructor(
-    core: Core<HTMLIFrameElement>,
+    element: HTMLIFrameElement,
     options?: ExhibitionPreviewOptions,
     optionsStorage?: KeyValueStorage<Partial<ExhibitionPreviewOptions>>,
   ) {
-    super(core);
+    super(element);
 
     if (
       typeof optionsStorage !== "undefined" &&
@@ -60,7 +60,7 @@ export class ExhibitionPreview
       optionsStorage ||
       new ElementAttributeStorage<Partial<ExhibitionPreviewOptions>, true>(
         true,
-        core.node,
+        this.node,
         "data-js-options",
         {},
         {},

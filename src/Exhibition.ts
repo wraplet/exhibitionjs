@@ -1,10 +1,10 @@
 import {
-  AbstractWraplet,
+  AbstractDependentWraplet,
   Constructable,
   Core,
-  DefaultCore,
   WrapletDependencyMap,
 } from "wraplet";
+import type { DependencyManager } from "wraplet";
 import {
   ExhibitionPreview,
   ExhibitionPreviewOptions,
@@ -23,13 +23,9 @@ import {
 } from "wraplet/storage";
 import { DocumentAlterer } from "./types/DocumentAlterer";
 import { PreviewWraplet } from "./types/PreviewWraplet";
+import { ExhibitionUpdater } from "./ExhibitionUpdater";
 
-export type ExhibitionOptions = {
-  /**
-   * Selector for the element that triggers the update of the preview.
-   */
-  updaterSelector?: string;
-};
+export type ExhibitionOptions = {};
 
 export type ExhibitionInitOptions = {
   init?: boolean;
@@ -47,6 +43,11 @@ export type MapConfiguration = {
     Class: Constructable<PreviewWraplet>;
     args?: unknown[];
   };
+  updaters: {
+    selector?: string;
+    Class: Constructable<ExhibitionUpdater>;
+    args?: unknown[];
+  };
 };
 
 export type DefaultMapConfiguration = {
@@ -59,6 +60,9 @@ export type DefaultMapConfiguration = {
     selector?: string;
     options?: ExhibitionPreviewOptions;
     optionsStorage?: KeyValueStorage<ExhibitionPreviewOptions>;
+  };
+  updaters?: {
+    selector?: string;
   };
 };
 
@@ -94,20 +98,27 @@ function createMap(configuration: MapConfiguration) {
       Class: configuration.preview.Class,
       args: configuration.preview.args || [],
     },
+    updaters: {
+      selector: configuration.updaters.selector,
+      Class: configuration.updaters.Class,
+      multiple: true,
+      required: false,
+      args: configuration.updaters.args || [],
+    },
   } satisfies WrapletDependencyMap;
 }
 
-export class Exhibition extends AbstractWraplet<
+export class Exhibition extends AbstractDependentWraplet<
   HTMLElement,
   ReturnType<typeof createMap>
 > {
   private options: KeyValueStorage<Required<ExhibitionOptions>>;
   constructor(
-    core: Core<HTMLElement, ReturnType<typeof createMap>>,
+    dm: DependencyManager<HTMLElement, ReturnType<typeof createMap>>,
     options: ExhibitionOptions = {},
     optionsStorage?: KeyValueStorage<Partial<ExhibitionOptions>>,
   ) {
-    super(core);
+    super(dm);
 
     if (
       typeof optionsStorage !== "undefined" &&
@@ -148,6 +159,10 @@ export class Exhibition extends AbstractWraplet<
     await this.wraplet.initialize();
   }
 
+  public async destroy(): Promise<void> {
+    await this.wraplet.destroy();
+  }
+
   protected async onInitialize() {
     if (!this.d.editors) {
       throw new Error("Exhibition has no editors");
@@ -169,12 +184,8 @@ export class Exhibition extends AbstractWraplet<
       }
     }
 
-    const updaterElements = this.node.querySelectorAll(
-      await this.options.get("updaterSelector"),
-    );
-
-    for (const element of updaterElements) {
-      this.core.addEventListener(element, "click", () => {
+    for (const updater of this.d.updaters) {
+      updater.addClickListener(() => {
         this.updatePreview();
       });
     }
@@ -271,7 +282,7 @@ export class Exhibition extends AbstractWraplet<
   ): Promise<Exhibition> {
     initOptions = this.fillCreateOptionsWithDefaults(initOptions);
     this.validateInitOptions(initOptions);
-    const core = new DefaultCore<HTMLElement, ReturnType<typeof createMap>>(
+    const core = new Core<HTMLElement, ReturnType<typeof createMap>>(
       element,
       map,
     );
@@ -409,6 +420,13 @@ export class Exhibition extends AbstractWraplet<
       }
     }
 
+    let updaterSelector: string = "[data-js-exhibition-updater]";
+    if (args.configuration?.updaters) {
+      if (args.configuration.updaters.selector) {
+        updaterSelector = args.configuration.updaters.selector;
+      }
+    }
+
     return createMap({
       editors: {
         selector: editorsSelector,
@@ -419,6 +437,11 @@ export class Exhibition extends AbstractWraplet<
         selector: previewSelector,
         Class: ExhibitionPreview,
         args: previewArgs,
+      },
+      updaters: {
+        selector: updaterSelector,
+        Class: ExhibitionUpdater,
+        args: [],
       },
     });
   }

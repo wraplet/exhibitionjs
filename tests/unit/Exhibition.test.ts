@@ -1,7 +1,7 @@
 import { Exhibition } from "../../src";
 import {
   Constructable,
-  DefaultCore,
+  Core,
   WrapletApi,
   WrapletDependencyMap,
   WrapletSymbol,
@@ -10,6 +10,7 @@ import { ExhibitionPreview } from "../../src";
 import { DocumentAltererProviderWraplet } from "../../src";
 import { DocumentAlterer } from "../../src";
 import { MonacoInstance } from "../../src";
+import { ExhibitionUpdater } from "../../src/ExhibitionUpdater";
 
 describe("Exhibition", () => {
   it("should be able to add and remove editors", () => {
@@ -18,12 +19,13 @@ describe("Exhibition", () => {
     iframe.setAttribute("data-js-exhibition-preview", "");
     container.appendChild(iframe);
 
-    const ExhibitionMap = {
+    const exhibitionMap = {
       editors: {
         selector: "[data-js-exhibition-editor]",
         multiple: true,
         required: false,
-        Class: class {} as any,
+        Class:
+          class {} as unknown as Constructable<DocumentAltererProviderWraplet>,
         args: [],
       },
       preview: {
@@ -33,9 +35,16 @@ describe("Exhibition", () => {
         Class: ExhibitionPreview,
         args: [],
       },
-    } as const satisfies WrapletDependencyMap;
+      updaters: {
+        selector: "[data-js-exhibition-updater]",
+        Class: class {} as unknown as Constructable<any>,
+        multiple: true,
+        required: false,
+        args: [],
+      },
+    } satisfies WrapletDependencyMap;
 
-    const core = new DefaultCore(container, ExhibitionMap);
+    const core = new Core(container, exhibitionMap);
     const exhibition = new Exhibition(core);
 
     const mockAlterer: DocumentAlterer = async () => {};
@@ -69,9 +78,11 @@ describe("Exhibition", () => {
   it("should override 'Class' based on the provided options when producing customized map", async () => {
     const editorsClassMock = jest.fn();
     const previewClassMock = jest.fn();
+    const updatersClassMock = jest.fn();
     const map = Exhibition.getCustomizedMap({
       editors: { Class: editorsClassMock },
       preview: { Class: previewClassMock },
+      updaters: { Class: updatersClassMock },
     });
     expect(map.editors.Class).toBe(editorsClassMock);
     expect(map.preview.Class).toBe(previewClassMock);
@@ -119,6 +130,9 @@ describe("Exhibition", () => {
       },
       preview: {
         Class: null as unknown as Constructable<ExhibitionPreview>,
+      },
+      updaters: {
+        Class: null as unknown as Constructable<ExhibitionUpdater>,
       },
     });
   });

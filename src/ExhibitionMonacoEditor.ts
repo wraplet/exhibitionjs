@@ -1,4 +1,4 @@
-import { AbstractWraplet, Constructable, Core, DefaultCore } from "wraplet";
+import { AbstractWraplet, Constructable } from "wraplet";
 import {
   ElementAttributeStorage,
   isKeyValueStorage,
@@ -83,11 +83,11 @@ export class ExhibitionMonacoEditor
     | null = null;
 
   constructor(
-    core: Core<HTMLElement>,
+    node: HTMLElement,
     options: ExhibitionMonacoEditorOptions,
     optionsStorage?: KeyValueStorage<Partial<ExhibitionMonacoEditorOptions>>,
   ) {
-    super(core);
+    super(node);
 
     if (
       typeof optionsStorage !== "undefined" &&
@@ -129,7 +129,7 @@ export class ExhibitionMonacoEditor
       optionsStorage ||
       new ElementAttributeStorage<Partial<ExhibitionMonacoEditorOptions>, true>(
         true,
-        core.node,
+        this.node,
         "data-js-options",
         {},
         {},
@@ -158,6 +158,10 @@ export class ExhibitionMonacoEditor
 
   public async initialize() {
     return this.wraplet.initialize();
+  }
+
+  public async destroy() {
+    await this.wraplet.destroy();
   }
 
   protected async onInitialize() {
@@ -421,7 +425,6 @@ export class ExhibitionMonacoEditor
     element: HTMLElement,
     options: ExhibitionMonacoEditorOptions,
   ): ExhibitionMonacoEditor {
-    const core = new DefaultCore(element, {});
-    return new ExhibitionMonacoEditor(core, options);
+    return new ExhibitionMonacoEditor(element, options);
   }
 }
