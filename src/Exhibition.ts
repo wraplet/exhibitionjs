@@ -163,7 +163,7 @@ export class Exhibition extends AbstractDependentWraplet<
     await this.wraplet.destroy();
   }
 
-  protected async onInitialize() {
+  protected override async onInitialize() {
     if (!this.d.editors) {
       throw new Error("Exhibition has no editors");
     }
@@ -255,7 +255,9 @@ export class Exhibition extends AbstractDependentWraplet<
     initOptions = this.fillCreateOptionsWithDefaults(initOptions);
     this.validateInitOptions(initOptions);
 
-    const exhibitions = this.createWraplets(node, map, attribute, [options]);
+    const exhibitions = this.createDependentWraplets(node, map, attribute, [
+      options,
+    ]);
 
     for (const exhibition of exhibitions) {
       await this.applyCreateOptions(exhibition, initOptions);
@@ -390,56 +392,41 @@ export class Exhibition extends AbstractDependentWraplet<
      * / Args integrity checks.
      */
 
-    let editorsSelector: string | undefined = "[data-js-exhibition-editor]";
-    if (deferEditors) {
-      editorsSelector = undefined;
-    }
-
     const editorsArgs: unknown[] = [];
 
     if (!deferEditors) {
-      if (args.configuration.editors.options) {
-        editorsArgs.push(args.configuration.editors.options);
-      }
+      editorsArgs.push(args.configuration.editors.options || {});
+
       if (args.configuration.editors.optionsStorage) {
         editorsArgs.push(args.configuration.editors.optionsStorage);
       }
     }
 
-    let previewSelector: string = "iframe[data-js-exhibition-preview]";
     const previewArgs: unknown[] = [];
     if (args.configuration?.preview) {
-      if (args.configuration.preview?.selector) {
-        previewSelector = args.configuration.preview.selector;
-      }
-      if (args.configuration.preview.options) {
-        previewArgs.push(args.configuration.preview.options);
-      }
+      previewArgs.push(args.configuration?.preview?.options || {});
       if (args.configuration.preview.optionsStorage) {
         previewArgs.push(args.configuration.preview.optionsStorage);
       }
     }
 
-    let updaterSelector: string = "[data-js-exhibition-updater]";
-    if (args.configuration?.updaters) {
-      if (args.configuration.updaters.selector) {
-        updaterSelector = args.configuration.updaters.selector;
-      }
-    }
-
     return createMap({
       editors: {
-        selector: editorsSelector,
+        selector: deferEditors ? undefined : "[data-js-exhibition-editor]",
         Class: ExhibitionMonacoEditor,
         args: editorsArgs,
       },
       preview: {
-        selector: previewSelector,
+        selector:
+          args.configuration?.preview?.selector ||
+          "iframe[data-js-exhibition-preview]",
         Class: ExhibitionPreview,
         args: previewArgs,
       },
       updaters: {
-        selector: updaterSelector,
+        selector:
+          args.configuration?.updaters?.selector ||
+          "[data-js-exhibition-updater]",
         Class: ExhibitionUpdater,
         args: [],
       },
