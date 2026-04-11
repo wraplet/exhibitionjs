@@ -56,7 +56,7 @@ describe("Exhibition", () => {
         status: {
           isInitialized: false,
         },
-      } as WrapletApi<HTMLElement>,
+      } as WrapletApi,
     };
 
     // Initially no editor
