@@ -1,7 +1,7 @@
 import { Exhibition } from "../../src";
 import {
   Constructable,
-  Core,
+  DDM,
   WrapletApi,
   WrapletDependencyMap,
   WrapletSymbol,
@@ -44,8 +44,8 @@ describe("Exhibition", () => {
       },
     } satisfies WrapletDependencyMap;
 
-    const core = new Core(container, exhibitionMap);
-    const exhibition = new Exhibition(core);
+    const ddm = new DDM(container, exhibitionMap);
+    const exhibition = new Exhibition(ddm);
 
     const mockAlterer: DocumentAlterer = async () => {};
     const mockEditor: DocumentAltererProviderWraplet = {

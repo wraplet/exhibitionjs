@@ -1,7 +1,7 @@
 import {
   AbstractDependentWraplet,
   Constructable,
-  Core,
+  DDM,
   WrapletDependencyMap,
 } from "wraplet";
 import type { DependencyManager } from "wraplet";
@@ -284,11 +284,11 @@ export class Exhibition extends AbstractDependentWraplet<
   ): Promise<Exhibition> {
     initOptions = this.fillCreateOptionsWithDefaults(initOptions);
     this.validateInitOptions(initOptions);
-    const core = new Core<HTMLElement, ReturnType<typeof createMap>>(
+    const ddm = new DDM<HTMLElement, ReturnType<typeof createMap>>(
       element,
       map,
     );
-    const exhibition = new Exhibition(core, options);
+    const exhibition = new Exhibition(ddm, options);
     await this.applyCreateOptions(exhibition, initOptions);
     return exhibition;
   }
