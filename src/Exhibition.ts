@@ -169,13 +169,6 @@ export class Exhibition extends AbstractDependentWraplet<
     }
 
     for (const editor of this.d.editors) {
-      if (
-        !editor.wraplet.status.isInitialized &&
-        !editor.wraplet.status.isGettingInitialized
-      ) {
-        await editor.wraplet.initialize();
-      }
-
       if (!this.d.preview.hasDocumentAlterer(editor.getDocumentAlterer())) {
         this.addPreviewAlterer(
           editor.getDocumentAlterer(),
