@@ -221,6 +221,16 @@ export class Exhibition extends AbstractDependentWraplet<
     return this.d.preview;
   }
 
+  /**
+   * If Preview becomes unresponsive, you can replace it with a new one.
+   */
+  public replacePreview(preview: PreviewWraplet): void {
+    // Hot-swap the preview and destroy the old one.
+    const oldPreview = this.dm.dependencies.preview;
+    this.dm.setExistingInstance("preview", preview);
+    oldPreview.wraplet.destroy();
+  }
+
   public async updatePreview(): Promise<void> {
     await this.d.preview.update();
   }
