@@ -140,6 +140,10 @@ export class ExhibitionPreview
     };
   }
 
+  public removeIFrame(): void {
+    this.node.remove();
+  }
+
   /**
    * Updates preview's height to match its content.
    */
