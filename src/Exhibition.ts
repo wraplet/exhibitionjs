@@ -258,7 +258,7 @@ export class Exhibition extends AbstractDependentWraplet<
     initOptions = this.fillCreateOptionsWithDefaults(initOptions);
     this.validateInitOptions(initOptions);
 
-    const exhibitions = this.createDependentWraplets(node, map, attribute, [
+    const exhibitions = this.createDependentWraplets(node, attribute, map, [
       options,
     ]);
 
