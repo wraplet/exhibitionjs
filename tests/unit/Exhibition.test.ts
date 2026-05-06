@@ -16,12 +16,12 @@ describe("Exhibition", () => {
   it("should be able to add and remove editors", () => {
     const container = document.createElement("div");
     const iframe = document.createElement("iframe");
-    iframe.setAttribute("data-js-exhibition-preview", "");
+    iframe.setAttribute("data-js-exhibition__preview", "");
     container.appendChild(iframe);
 
     const exhibitionMap = {
       editors: {
-        selector: "[data-js-exhibition-editor]",
+        selector: "[data-js-exhibition__editor]",
         multiple: true,
         required: false,
         Class:
@@ -29,14 +29,14 @@ describe("Exhibition", () => {
         args: [],
       },
       preview: {
-        selector: "iframe[data-js-exhibition-preview]",
+        selector: "iframe[data-js-exhibition__preview]",
         multiple: false,
         required: true,
         Class: ExhibitionPreview,
         args: [],
       },
       updaters: {
-        selector: "[data-js-exhibition-updater]",
+        selector: "[data-js-exhibition__updater]",
         Class: class {} as unknown as Constructable<any>,
         multiple: true,
         required: false,

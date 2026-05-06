@@ -4,7 +4,6 @@ import {
   DDM,
   WrapletDependencyMap,
 } from "wraplet";
-import type { DependencyManager } from "wraplet";
 import {
   ExhibitionPreview,
   ExhibitionPreviewOptions,
@@ -15,12 +14,7 @@ import {
 } from "./ExhibitionMonacoEditor";
 import { exhibitionDefaultAttribute } from "./selectors";
 import { DocumentAltererProviderWraplet } from "./types/DocumentAltererProviderWraplet";
-import {
-  ElementAttributeStorage,
-  isKeyValueStorage,
-  KeyValueStorage,
-  StorageWrapper,
-} from "wraplet/storage";
+import { KeyValueStorage } from "wraplet/storage";
 import { DocumentAlterer } from "./types/DocumentAlterer";
 import { PreviewWraplet } from "./types/PreviewWraplet";
 import { ExhibitionUpdater } from "./ExhibitionUpdater";
@@ -112,45 +106,6 @@ export class Exhibition extends AbstractDependentWraplet<
   HTMLElement,
   ReturnType<typeof createMap>
 > {
-  private options: KeyValueStorage<Required<ExhibitionOptions>>;
-  constructor(
-    dm: DependencyManager<HTMLElement, ReturnType<typeof createMap>>,
-    options: ExhibitionOptions = {},
-    optionsStorage?: KeyValueStorage<Partial<ExhibitionOptions>>,
-  ) {
-    super(dm);
-
-    if (
-      typeof optionsStorage !== "undefined" &&
-      !isKeyValueStorage(optionsStorage)
-    ) {
-      throw new Error("Provided optionsStorage must be a KeyValueStorage");
-    }
-
-    const defaultOptions: Required<ExhibitionOptions> = {
-      updaterSelector: "[data-js-exhibition-updater]",
-    };
-
-    const optsStorage =
-      optionsStorage ??
-      new ElementAttributeStorage<Partial<ExhibitionOptions>, true>(
-        true,
-        this.node,
-        "data-js-options",
-        {},
-        {
-          updaterSelector: (data: unknown) => typeof data === "string",
-        },
-      );
-    this.options = new StorageWrapper<Required<ExhibitionOptions>>(
-      optsStorage,
-      { ...defaultOptions, ...options },
-      {
-        updaterSelector: (data: unknown) => typeof data === "string",
-      },
-    );
-  }
-
   protected supportedNodeTypes(): readonly Constructable<HTMLElement>[] {
     return super.supportedNodeTypesGuard([HTMLElement]);
   }
@@ -274,7 +229,6 @@ export class Exhibition extends AbstractDependentWraplet<
    *
    * @param element Element to wrap.
    * @param map Map of dependencies for the Exhibition instance.
-   * @param options Options for the Exhibition instance.
    * @param initOptions Options related to the creation process of the Exhibitions.
    */
   public static async create<
@@ -282,7 +236,6 @@ export class Exhibition extends AbstractDependentWraplet<
   >(
     element: HTMLElement,
     map: M,
-    options: ExhibitionOptions = {},
     initOptions: ExhibitionInitOptions = {},
   ): Promise<Exhibition> {
     initOptions = this.fillCreateOptionsWithDefaults(initOptions);
@@ -291,7 +244,7 @@ export class Exhibition extends AbstractDependentWraplet<
       element,
       map,
     );
-    const exhibition = new Exhibition(ddm, options);
+    const exhibition = new Exhibition(ddm);
     await this.applyCreateOptions(exhibition, initOptions);
     return exhibition;
   }
@@ -415,21 +368,21 @@ export class Exhibition extends AbstractDependentWraplet<
 
     return createMap({
       editors: {
-        selector: deferEditors ? undefined : "[data-js-exhibition-editor]",
+        selector: deferEditors ? undefined : "[data-js-exhibition__editor]",
         Class: ExhibitionMonacoEditor,
         args: editorsArgs,
       },
       preview: {
         selector:
           args.configuration?.preview?.selector ||
-          "iframe[data-js-exhibition-preview]",
+          "iframe[data-js-exhibition__preview]",
         Class: ExhibitionPreview,
         args: previewArgs,
       },
       updaters: {
         selector:
           args.configuration?.updaters?.selector ||
-          "[data-js-exhibition-updater]",
+          "[data-js-exhibition__updater]",
         Class: ExhibitionUpdater,
         args: [],
       },

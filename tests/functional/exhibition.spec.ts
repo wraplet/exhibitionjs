@@ -13,12 +13,12 @@ test("basic exhibition initialization", async ({ page }) => {
 
   // Check if iframe element exists
   const iframeExists = await page
-    .locator("[data-js-exhibition-preview]")
+    .locator("[data-js-exhibition__preview]")
     .count();
 
   expect(iframeExists).toBe(1);
 
-  const iframe = page.frameLocator("[data-js-exhibition-preview]");
+  const iframe = page.frameLocator("[data-js-exhibition__preview]");
 
   // Wait for the container to appear and the script to execute
   await iframe.locator("#container h1").waitFor();
@@ -42,12 +42,12 @@ test("exhibition initialization with editor manually added beforehand", async ({
 
   // Check if iframe element exists
   const iframeExists = await page
-    .locator("[data-js-exhibition-preview]")
+    .locator("[data-js-exhibition__preview]")
     .count();
 
   expect(iframeExists).toBe(1);
 
-  const iframe = page.frameLocator("[data-js-exhibition-preview]");
+  const iframe = page.frameLocator("[data-js-exhibition__preview]");
 
   // Wait for the container to appear.
   await iframe.locator("#container").waitFor();
@@ -66,7 +66,7 @@ test("advanced priorities: HTML+CSS+TS render and style applied", async ({
 
   await page.getByRole("button", { name: /update/i }).click();
 
-  const iframe = page.frameLocator("[data-js-exhibition-preview]");
+  const iframe = page.frameLocator("[data-js-exhibition__preview]");
 
   // Wait for script to run and DOM to change
   await iframe.locator("#greeting").waitFor();
@@ -83,7 +83,7 @@ test("custom document alterer injects marker element", async ({ page }) => {
   await page.goto("/tests/functional/html/custom-alterer.html");
   await page.waitForLoadState("networkidle");
 
-  const iframe = page.frameLocator("[data-js-exhibition-preview]");
+  const iframe = page.frameLocator("[data-js-exhibition__preview]");
   await iframe.locator("#injected-by-alterer").waitFor();
   await expect(iframe.locator("#injected-by-alterer")).toHaveText(/Injected/i);
 });
@@ -93,8 +93,8 @@ test("custom tag attributes are applied", async ({ page }) => {
   await page.waitForLoadState("networkidle");
   await page.getByRole("button", { name: /update/i }).click();
 
-  const iframeElement = page.locator("[data-js-exhibition-preview]");
-  const iframe = page.frameLocator("[data-js-exhibition-preview]");
+  const iframeElement = page.locator("[data-js-exhibition__preview]");
+  const iframe = page.frameLocator("[data-js-exhibition__preview]");
 
   await expect(iframeElement).toHaveAttribute("src", /^blob:/);
 
