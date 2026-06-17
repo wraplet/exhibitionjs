@@ -22,5 +22,15 @@ build: cleanup-dist
 build-dev: cleanup-dist
 	pnpm run dev:build
 
-publish: build
-	pnpm publish --access public
+publish: required-TAG build
+	pnpm publish --access public --tag "${TAG}"
+
+required-%:
+	@if [ "${${*}}" = "" ]; then
+		echo "Environment variable $* is required";
+		exit 1;
+	fi
+
+# This is an empty target just to indicate the optional dependencies of other targets.
+optional-%:
+	@:
