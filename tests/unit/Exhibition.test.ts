@@ -1,11 +1,5 @@
 import { Exhibition } from "../../src";
-import {
-  Constructable,
-  DDM,
-  WrapletApi,
-  WrapletDependencyMap,
-  WrapletSymbol,
-} from "wraplet";
+import { Constructable, DDM, WrapletApi, WrapletDependencyMap } from "wraplet";
 import { ExhibitionPreview } from "../../src";
 import { DocumentAltererProviderWraplet } from "../../src";
 import { DocumentAlterer } from "../../src";
@@ -49,7 +43,6 @@ describe("Exhibition", () => {
 
     const mockAlterer: DocumentAlterer = async () => {};
     const mockEditor: DocumentAltererProviderWraplet = {
-      [WrapletSymbol]: true,
       getDocumentAlterer: () => mockAlterer,
       getPriority: () => 0,
       wraplet: {
