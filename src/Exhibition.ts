@@ -14,7 +14,7 @@ import {
 } from "./ExhibitionMonacoEditor";
 import { exhibitionDefaultAttribute } from "./selectors";
 import { DocumentAltererProviderWraplet } from "./types/DocumentAltererProviderWraplet";
-import { KeyValueStorage } from "wraplet/storage";
+import { KeyValueStorage } from "kivistorage";
 import { DocumentAlterer } from "./types/DocumentAlterer";
 import { PreviewWraplet } from "./types/PreviewWraplet";
 import { ExhibitionUpdater } from "./ExhibitionUpdater";

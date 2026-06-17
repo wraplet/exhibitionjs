@@ -6,7 +6,7 @@ import {
   KeyValueStorage,
   StorageValidators,
   StorageWrapper,
-} from "wraplet/storage";
+} from "kivistorage";
 import { PreviewWraplet } from "./types/PreviewWraplet";
 
 type AltererData = {

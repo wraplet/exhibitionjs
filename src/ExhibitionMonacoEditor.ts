@@ -5,7 +5,7 @@ import {
   KeyValueStorage,
   StorageValidators,
   StorageWrapper,
-} from "wraplet/storage";
+} from "kivistorage";
 
 import type * as monaco from "monaco-editor";
 import { DocumentAltererProviderWraplet } from "./types/DocumentAltererProviderWraplet";
